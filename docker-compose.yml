@@ -1,4 +1,4 @@
-# One image, three containers: the common server plus the two user interfaces.
+# One image, five containers: the server, seller, and three independent buyer interfaces.
 services:
   server:
     build: .
@@ -33,6 +33,26 @@ services:
       - CONSUMER_PORT=3002
       - SERVER_PORT=3000
     ports: ["3002:3002"]
+    depends_on: [server]
+    restart: unless-stopped
+
+  consumer2:
+    build: .
+    command: ["node", "consumer/server.js"]
+    environment:
+      - CONSUMER_PORT=3003
+      - SERVER_PORT=3000
+    ports: ["3003:3003"]
+    depends_on: [server]
+    restart: unless-stopped
+
+  consumer3:
+    build: .
+    command: ["node", "consumer/server.js"]
+    environment:
+      - CONSUMER_PORT=3004
+      - SERVER_PORT=3000
+    ports: ["3004:3004"]
     depends_on: [server]
     restart: unless-stopped
 

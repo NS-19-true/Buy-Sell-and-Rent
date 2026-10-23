@@ -1,9 +1,19 @@
-// Starts the common server and both interfaces at once (one process each).
+// Starts the common server, seller interface, and three independent buyer interfaces.
 const { spawn } = require('child_process');
 const path = require('path');
+const { CONSUMER2_PORT, CONSUMER3_PORT } = require('./config');
 
-const procs = ['server/server.js', 'seller/server.js', 'consumer/server.js'].map((f) =>
-  spawn(process.execPath, [path.join(__dirname, f)], { stdio: 'inherit', env: process.env })
+const specs = [
+  { file: 'server/server.js' },
+  { file: 'seller/server.js' },
+  { file: 'consumer/server.js' },
+  { file: 'consumer/server.js', env: { CONSUMER_PORT: String(CONSUMER2_PORT) } },
+  { file: 'consumer/server.js', env: { CONSUMER_PORT: String(CONSUMER3_PORT) } }
+];
+const procs = specs.map(({ file, env }) =>
+  spawn(process.execPath, [path.join(__dirname, file)], {
+    stdio: 'inherit', env: { ...process.env, ...env }
+  })
 );
 
 const stop = () => procs.forEach((p) => p.kill());
