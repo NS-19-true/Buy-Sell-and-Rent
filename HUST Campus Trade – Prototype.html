@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>HUST Campus Trade – Prototype</title>
+<style>
+:root{--bg:#ecebe6;--screen:#f6f6f3;--card:#fff;--ink:#1d2421;--mute:#6b746f;--line:#e2e3de;--green:#07a35a;--greenbg:#e3f5eb;--red:#e1251b;--amber:#fff3d6;--amberink:#7a5600;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#101412;--screen:#171c19;--card:#1f2622;--ink:#eef1ee;--mute:#9aa49e;--line:#2c3430;--greenbg:#12372a;--amber:#3a2f10;--amberink:#f3d27a}}
+:root[data-theme="dark"]{--bg:#101412;--screen:#171c19;--card:#1f2622;--ink:#eef1ee;--mute:#9aa49e;--line:#2c3430;--greenbg:#12372a;--amber:#3a2f10;--amberink:#f3d27a}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;display:flex;align-items:center;justify-content:center}
+.phone{width:390px;height:min(820px,100%);background:var(--screen);border-radius:28px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 0 0 8px #0d110f,0 20px 50px rgba(0,0,0,.25)}
+@media(max-width:430px){.phone{width:100%;height:100%;border-radius:0;box-shadow:none}}
+header{padding:12px 14px 8px;background:var(--card);border-bottom:1px solid var(--line)}
+.top{display:flex;justify-content:space-between;align-items:center}
+h1{font-size:17px;margin:0}
+.sub{color:var(--mute);font-size:12px}
+.search{width:100%;margin-top:8px;padding:9px 12px;border:1px solid var(--line);border-radius:20px;background:var(--screen);color:var(--ink);font:inherit}
+.tabs{display:flex;gap:6px;margin-top:10px;background:var(--screen);padding:3px;border-radius:10px}
+.tabs button{flex:1;border:0;padding:8px;border-radius:8px;background:none;color:var(--mute);font:inherit;font-weight:600;cursor:pointer}
+.tabs button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.tabs button.on.rent{color:var(--green)}
+main{flex:1;overflow-y:auto;padding:10px 12px 16px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px}
+.chip{white-space:nowrap;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:5px 11px;border-radius:16px;font:inherit;font-size:12.5px;cursor:pointer}
+.chip.on{background:var(--ink);color:var(--card);border-color:var(--ink)}
+.bar{display:flex;gap:8px;align-items:center;margin-bottom:10px}
+select{flex:1;padding:7px 8px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--ink);font:inherit;font-size:12.5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{background:var(--card);border-radius:12px;overflow:hidden;cursor:pointer;border:1px solid var(--line);text-align:left;padding:0;font:inherit;color:inherit}
+.item:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+.pic{height:96px;display:flex;align-items:center;justify-content:center;font-size:46px}
+.meta{padding:8px 9px 10px}
+.name{font-weight:600;font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
+.price{color:var(--red);font-weight:700;font-size:16px;margin-top:3px}
+.price small{font-size:11px;font-weight:500}
+.tag{display:inline-block;font-size:11px;padding:1px 6px;border-radius:4px;background:var(--greenbg);color:var(--green);margin-right:4px}
+.dim{color:var(--mute);font-size:11.5px}
+nav{display:flex;border-top:1px solid var(--line);background:var(--card)}
+nav button{flex:1;border:0;background:none;padding:9px 0 10px;color:var(--mute);font:inherit;font-size:11.5px;cursor:pointer}
+nav button.on{color:var(--green);font-weight:700}
+nav b{display:block;font-size:19px;font-weight:400}
+.sheet{position:absolute;inset:0;background:var(--screen);display:flex;flex-direction:column;transform:translateY(100%);transition:transform .25s ease;z-index:5}
+.sheet.open{transform:none}
+@media(prefers-reduced-motion:reduce){.sheet{transition:none}}
+.sheet .body{flex:1;overflow-y:auto}
+.back{border:0;background:var(--card);color:var(--ink);padding:12px 14px;text-align:left;font:inherit;font-weight:600;border-bottom:1px solid var(--line);cursor:pointer}
+.hero{height:170px;display:flex;align-items:center;justify-content:center;font-size:84px}
+.sec{background:var(--card);margin:8px 12px;padding:12px;border-radius:12px;border:1px solid var(--line)}
+.sec h3{margin:0 0 6px;font-size:13.5px}
+.row{display:flex;justify-content:space-between;gap:8px;padding:3px 0}
+.big{font-size:24px;font-weight:700;color:var(--red)}
+.btn{border:0;border-radius:22px;padding:11px 16px;font:inherit;font-weight:700;cursor:pointer;background:var(--green);color:#fff;width:100%}
+.btn.alt{background:var(--card);color:var(--green);border:1.5px solid var(--green)}
+.btn:disabled{opacity:.5}
+.inl{display:flex;gap:8px;margin-top:8px}
+.inl .btn{width:auto;flex:none}
+input[type=number],input[type=text],textarea,.f select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--screen);color:var(--ink);font:inherit}
+label{display:block;font-size:12.5px;font-weight:600;margin:10px 0 4px}
+.note{background:var(--amber);color:var(--amberink);padding:8px 10px;border-radius:8px;font-size:12.5px;margin-top:8px}
+.ok{background:var(--greenbg);color:var(--green);padding:8px 10px;border-radius:8px;font-size:12.5px;margin-top:8px;font-weight:600}
+.log{list-style:none;margin:6px 0 0;padding:0}
+.log li{padding:5px 0;border-top:1px solid var(--line);font-size:12.5px}
+.res{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.res div{background:var(--screen);padding:8px;border-radius:8px}
+.res b{display:block;font-size:17px}
+.pos{color:var(--green)}.neg{color:var(--red)}
+.empty{text-align:center;color:var(--mute);padding:36px 10px}
+.toast{position:absolute;left:50%;bottom:76px;transform:translateX(-50%);background:var(--ink);color:var(--card);padding:9px 16px;border-radius:20px;font-size:13px;z-index:9;opacity:0;pointer-events:none;transition:opacity .2s;max-width:88%;text-align:center}
+.toast.on{opacity:1}
+</style>
+</head>
+<body>
+<div class="phone" id="app">
+  <header>
+    <div class="top"><div><h1>HUST Campus Trade</h1><div class="sub">For international students · prototype</div></div></div>
+    <input class="search" id="q" type="search" placeholder="Search bikes, rice cookers, coats..." aria-label="Search">
+    <div class="tabs" id="mode" role="tablist">
+      <button class="on" data-m="buy" role="tab">Buy</button>
+      <button class="rent" data-m="rent" role="tab">Rent</button>
+    </div>
+  </header>
+  <main id="main"></main>
+  <nav>
+    <button class="on" data-v="market"><b>🏠</b>Market</button>
+    <button data-v="post"><b>➕</b>Post item</button>
+    <button data-v="earn"><b>💰</b>Owner earnings</button>
+  </nav>
+  <div class="sheet" id="sheet"><button class="back" id="back">‹ Back</button><div class="body" id="sbody"></div></div>
+  <div class="toast" id="toast"></div>
+</div>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+let items=[
+ {id:1,t:'buy',cat:'Transport',name:'Giant city bike, 21-speed',e:'🚲',c:'#dbeafe',price:180,cond:'Like new',age:'Used 1 year',desc:'Serviced last month, new brake pads, lock included. Selling because I am graduating.',bill:'Original receipt (RMB 620) and service invoice',seller:'Amir, Dorm 6',bids:[150,160],new:6},
+ {id:2,t:'buy',cat:'Appliances',name:'Haier mini fridge 90L',e:'🧊',c:'#e0f2fe',price:260,cond:'Good',age:'Used 2 years',desc:'Works perfectly, small scratch on the side. Fits under a desk.',bill:'Purchase receipt and 1-year warranty card',seller:'Linh, Friendship Apt',bids:[220],new:5},
+ {id:3,t:'buy',cat:'Electronics',name:'24" Dell monitor + HDMI cable',e:'🖥️',c:'#ede9fe',price:300,cond:'Like new',age:'Used 8 months',desc:'No dead pixels. Box still available.',bill:'JD.com order screenshot',seller:'Grace, Dorm 9',bids:[],new:4},
+ {id:4,t:'buy',cat:'Books',name:'Engineering Math textbook set',e:'📚',c:'#fef3c7',price:80,cond:'Good',age:'Used 1 semester',desc:'Light highlighting in chapters 1–4. Three books in the set.',bill:'Not required',seller:'Daniel, Dorm 6',bids:[60,70],new:3},
+ {id:5,t:'buy',cat:'Appliances',name:'Midea microwave 20L',e:'📡',c:'#fee2e2',price:120,cond:'Fair',age:'Used 3 years',desc:'Heats well. Turntable has a small chip.',bill:'No bill, photo of model sticker',seller:'Sara, Friendship Apt',bids:[],new:2},
+ {id:6,t:'buy',cat:'Furniture',name:'LED study lamp, 3 modes',e:'💡',c:'#fef9c3',price:35,cond:'Like new',age:'Used 6 months',desc:'USB powered, adjustable arm.',bill:'Taobao order screenshot',seller:'Ravi, Dorm 9',bids:[30],new:1},
+ {id:7,t:'rent',cat:'Utensils',name:'Air fryer 4L',e:'🍟',c:'#ffedd5',price:1,cond:'Like new',age:'Bought for RMB 137',desc:'Cleans easily. Please wipe the basket after use.',bill:'Purchase receipt',seller:'Hang, Friendship Apt',avail:'Mon–Fri 17:00–21:00',rules:['No raw fish or beef','Wash and dry before return','Do not use metal tools on the basket'],dep:30,new:7},
+ {id:8,t:'rent',cat:'Utensils',name:'Rice cooker 3L',e:'🍚',c:'#f1f5f9',price:0.8,cond:'Good',age:'Used 1 year',desc:'Includes rice paddle and cup.',bill:'Purchase receipt',seller:'Mei, Friendship Apt',avail:'Daily 10:00–22:00',rules:['No beef','Wash inner pot after use'],dep:30,new:5},
+ {id:9,t:'rent',cat:'Utensils',name:'Non-stick wok + pan set',e:'🍳',c:'#fde68a',price:1.2,cond:'Good',age:'Used 8 months',desc:'28cm wok and 24cm pan. Weekend meal-prep friendly.',bill:'Not required',seller:'Kofi, Dorm 6',avail:'Sat–Sun all day',rules:['Plastic or wooden tools only','No beef','Wash and dry before return'],dep:40,new:4},
+ {id:10,t:'rent',cat:'Clothes',name:'Black formal suit (M)',e:'🕴️',c:'#e5e7eb',price:6,cond:'Like new',age:'Dry-cleaned',desc:'Good for presentations and interviews. Jacket and trousers.',bill:'Purchase receipt',seller:'Omar, Dorm 9',avail:'By request, 1-day blocks',rules:['No stains or alterations','Return dry-cleaned'],dep:100,new:3},
+ {id:11,t:'rent',cat:'Clothes',name:'Long winter coat (L)',e:'🧥',c:'#cffafe',price:3,cond:'Good',age:'Used 1 winter',desc:'Warm down coat for a short trip north.',bill:'Not required',seller:'Elena, Dorm 6',avail:'Any day, 1-day blocks',rules:['No smoking in the coat','Return washed'],dep:80,new:2}
+];
+let st={v:'market',m:'buy',cat:'All',sort:'new',cond:'Any',q:''};
+const cats=m=>m==='buy'?['All','Transport','Appliances','Electronics','Books','Furniture']:['All','Utensils','Clothes'];
+const fmt=n=>Number.isInteger(n)?n:n.toFixed(1);
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),2200)}
+function topBid(i){return i.bids.length?Math.max(...i.bids):null}
+
+function market(){
+  let l=items.filter(i=>i.t===st.m&&(st.cat==='All'||i.cat===st.cat)&&(st.cond==='Any'||i.cond===st.cond)&&(i.name+i.cat+i.desc).toLowerCase().includes(st.q.toLowerCase()));
+  l.sort((a,b)=>st.sort==='lo'?a.price-b.price:st.sort==='hi'?b.price-a.price:b.new-a.new);
+  $('#main').innerHTML=`<div class="chips">${cats(st.m).map(c=>`<button class="chip ${c===st.cat?'on':''}" data-c="${c}">${c}</button>`).join('')}</div>
+  <div class="bar"><select id="sort" aria-label="Sort"><option value="new">Newest first</option><option value="lo">Price: low to high</option><option value="hi">Price: high to low</option></select>
+  <select id="cond" aria-label="Condition"><option>Any</option><option>Like new</option><option>Good</option><option>Fair</option></select></div>
+  ${l.length?`<div class="grid">${l.map(i=>`<button class="item" data-id="${i.id}"><div class="pic" style="background:${i.c}">${i.e}</div><div class="meta"><div class="name">${esc(i.name)}</div><div><span class="tag">${esc(i.cond)}</span>${i.t==='buy'&&topBid(i)?`<span class="dim">Top bid ¥${topBid(i)}</span>`:''}</div><div class="price">¥${fmt(i.price)}${i.t==='rent'?'<small> /hour</small>':''}</div></div></button>`).join('')}</div>`:`<div class="empty">No items match these filters.<br>Try another category or clear the search.</div>`}`;
+  $('#sort').value=st.sort;$('#cond').value=st.cond;
+}
+
+function detail(id){
+  const i=items.find(x=>x.id===id);
+  let h=`<div class="hero" style="background:${i.c}">${i.e}</div>
+  <div class="sec"><div class="big">¥${fmt(i.price)}${i.t==='rent'?'<small style="font-size:13px"> per hour</small>':''}</div><div style="font-weight:600;margin-top:2px">${esc(i.name)}</div><div class="dim">Posted by ${esc(i.seller)}</div></div>
+  <div class="sec"><h3>Condition</h3><div class="row"><span>State</span><b>${esc(i.cond)}</b></div><div class="row"><span>History</span><span>${esc(i.age)}</span></div><p style="margin:6px 0 0">${esc(i.desc)}</p></div>
+  <div class="sec"><h3>Proof of purchase</h3><div>✅ ${esc(i.bill)}</div></div>`;
+  if(i.t==='buy'){
+    const tb=topBid(i);
+    h+=`<div class="sec" id="bidbox"><h3>Bid instead of chatting</h3><div class="row"><span>Current top bid</span><b>${tb?'¥'+tb:'No bids yet'}</b></div>
+    <div class="inl"><input type="number" id="bidv" min="1" placeholder="Your bid in ¥" aria-label="Your bid"><button class="btn" id="bidgo">Place bid</button></div><div id="bidmsg"></div></div>
+    <div class="sec"><button class="btn" id="buynow">Buy now for ¥${i.price}</button></div>`;
+  }else{
+    h+=`<div class="sec"><h3>Availability</h3><div>🕒 ${esc(i.avail)}</div><h3 style="margin-top:10px">Owner's rules</h3><ul style="margin:0;padding-left:18px">${i.rules.map(r=>`<li>${esc(r)}</li>`).join('')}</ul></div>
+    <div class="sec" id="rbox"><h3>Book this item</h3><label for="hrs" style="margin-top:0">Hours needed</label><input type="number" id="hrs" min="0.5" step="0.5" value="1">
+    <div class="row" style="margin-top:8px"><span>Rental fee</span><b id="fee"></b></div><div class="row"><span>Security deposit (refunded on return)</span><b>¥${i.dep}</b></div><div class="row"><span>Pay now</span><b id="tot"></b></div>
+    <button class="btn" id="rentgo" style="margin-top:8px">Request rental</button><div id="rmsg"></div></div>`;
+  }
+  $('#sbody').innerHTML=h;$('#sheet').classList.add('open');
+  if(i.t==='buy'){
+    $('#bidgo').onclick=()=>{const v=+$('#bidv').value,tb=topBid(i);
+      if(!v||v<=0)return $('#bidmsg').innerHTML='<div class="note">Enter a bid amount first.</div>';
+      if(tb&&v<=tb)return $('#bidmsg').innerHTML=`<div class="note">Your bid must be higher than ¥${tb}.</div>`;
+      i.bids.push(v);$('#bidmsg').innerHTML=`<div class="ok">Bid of ¥${v} sent. ${esc(i.seller.split(',')[0])} will accept or decline in the app.</div>`;
+      $('#bidbox .row b').textContent='¥'+v;market()};
+    $('#buynow').onclick=()=>{$('#buynow').outerHTML=`<div class="ok">Order placed. Meet ${esc(i.seller)} to pick it up.</div>`};
+  }else{
+    const calc=()=>{const h=Math.max(0.5,+$('#hrs').value||0.5),f=h*i.price;$('#fee').textContent='¥'+f.toFixed(1);$('#tot').textContent='¥'+(f+i.dep).toFixed(1)};
+    $('#hrs').oninput=calc;calc();
+    $('#rentgo').onclick=()=>rented(i);
+  }
+}
+
+function rented(i){
+  const util=i.cat==='Utensils';
+  $('#rbox').innerHTML=`<h3>Rental confirmed</h3><div class="ok">Deposit of ¥${i.dep} held. It is refunded as soon as the owner confirms the return.</div>
+  ${util?`<div class="note">Utensil rule: post what you are cooking every 30 minutes.</div><div class="inl"><input type="text" id="cook" placeholder="e.g. Chicken wings, 180°C" aria-label="What are you cooking"><button class="btn" id="post">Post update</button></div><ul class="log" id="log"></ul>`:`<div class="note">Clothes rule: return washed or dry-cleaned, with no stains or alterations.</div>`}
+  <button class="btn alt" id="ret" style="margin-top:10px">Mark as returned</button>`;
+  if(util)$('#post').onclick=()=>{const v=$('#cook').value.trim();if(!v)return toast('Write what you are cooking');const t=new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});$('#log').insertAdjacentHTML('afterbegin',`<li><b>${t}</b> · ${esc(v)}</li>`);$('#cook').value=''};
+  $('#ret').onclick=()=>{$('#rbox').innerHTML=`<div class="ok">Returned. Deposit of ¥${i.dep} refunded to your wallet.</div>`;toast('Deposit refunded')};
+}
+
+function postForm(){
+  $('#main').innerHTML=`<div class="sec f" style="margin:0"><h3>List an item</h3>
+  <label for="pt">I want to</label><select id="pt"><option value="buy">Sell it</option><option value="rent">Rent it out</option></select>
+  <label for="pn">Item name</label><input type="text" id="pn" placeholder="e.g. Electric kettle">
+  <label for="pc">Category</label><select id="pc"></select>
+  <label for="pp" id="pl">Price (¥)</label><input type="number" id="pp" min="0" step="0.5">
+  <label for="pd">Condition and description</label><textarea id="pd" rows="3" placeholder="Age, any damage, what is included"></textarea>
+  <div id="rentf" hidden><label for="pa">Hours available</label><input type="text" id="pa" placeholder="e.g. Mon–Fri 17:00–21:00"><label for="pr">Things borrowers must not do</label><input type="text" id="pr" placeholder="e.g. No beef, no metal tools"><label for="pdp">Security deposit (¥)</label><input type="number" id="pdp" min="0" value="30"></div>
+  <button class="btn" id="pgo" style="margin-top:14px">Publish listing</button></div>`;
+  const setc=()=>{const r=$('#pt').value==='rent';$('#rentf').hidden=!r;$('#pl').textContent=r?'Rent per hour (¥)':'Price (¥)';$('#pc').innerHTML=(r?['Utensils','Clothes']:['Transport','Appliances','Electronics','Books','Furniture']).map(c=>`<option>${c}</option>`).join('')};
+  $('#pt').onchange=setc;setc();
+  $('#pgo').onclick=()=>{const n=$('#pn').value.trim(),p=+$('#pp').value;
+    if(!n||!p)return toast('Add a name and a price');
+    const r=$('#pt').value==='rent';
+    items.unshift({id:Date.now(),t:r?'rent':'buy',cat:$('#pc').value,name:n,e:r?'🧰':'📦',c:'#e7e5e4',price:p,cond:'Good',age:'Just listed',desc:$('#pd').value||'No description yet.',bill:'Pending upload',seller:'You',bids:[],new:99,avail:$('#pa').value||'Ask the owner',rules:($('#pr').value||'Return clean').split(/,\s*/),dep:+$('#pdp').value||0});
+    st.m=r?'rent':'buy';st.cat='All';toast('Listing published');show('market')};
+}
+
+function earn(){
+  $('#main').innerHTML=`<div class="sec f" style="margin:0"><h3>What does renting earn the owner?</h3><div class="dim">Pre-filled with the air fryer example.</div>
+  <label for="e1">Price paid (¥)</label><input type="number" id="e1" value="137">
+  <label for="e2">Resale after 2 years with no renting (¥)</label><input type="number" id="e2" value="75">
+  <label for="e3">Resale after 2 years if rented out (¥)</label><input type="number" id="e3" value="50">
+  <label for="e4">Rent per hour (¥)</label><input type="number" id="e4" value="1" step="0.5">
+  <label for="e5">Hours rented per week</label><input type="number" id="e5" value="1" step="0.5">
+  <label for="e6">Years</label><input type="number" id="e6" value="2">
+  <div class="res" id="eres"></div></div>`;
+  const c=()=>{const [p,r0,r1,rate,h,y]=['e1','e2','e3','e4','e5','e6'].map(k=>+$('#'+k).value||0);
+    const inc=rate*h*52*y,a=r0-p,b=inc+r1-p;
+    $('#eres').innerHTML=`<div>Selling only<b class="${a>=0?'pos':'neg'}">${a>=0?'+':'−'}¥${Math.abs(a).toFixed(0)}</b></div><div>Renting + selling<b class="${b>=0?'pos':'neg'}">${b>=0?'+':'−'}¥${Math.abs(b).toFixed(0)}</b></div><div>Rental income<b>¥${inc.toFixed(0)}</b></div><div>Better off by<b class="pos">¥${(b-a).toFixed(0)}</b></div>`};
+  document.querySelectorAll('.f input').forEach(e=>e.oninput=c);c();
+}
+
+function show(v){
+  st.v=v;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  document.querySelectorAll('#mode button').forEach(b=>b.classList.toggle('on',v==='market'&&b.dataset.m===st.m));
+  $('#q').parentElement.style.display='';
+  ({market,post:postForm,earn})[v]();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>show(b.dataset.v));
+document.querySelectorAll('#mode button').forEach(b=>b.onclick=()=>{st.m=b.dataset.m;st.cat='All';show('market')});
+$('#q').oninput=e=>{st.q=e.target.value;if(st.v!=='market')show('market');else market()};
+$('#back').onclick=()=>$('#sheet').classList.remove('open');
+$('#main').addEventListener('click',e=>{
+  const c=e.target.closest('.chip'),i=e.target.closest('.item');
+  if(c){st.cat=c.dataset.c;market()}else if(i)detail(+i.dataset.id)});
+$('#main').addEventListener('change',e=>{if(e.target.id==='sort'){st.sort=e.target.value;market()}if(e.target.id==='cond'){st.cond=e.target.value;market()}});
+show('market');
+</script>
+</body>
+</html>
