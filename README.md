@@ -87,9 +87,13 @@ campus-trade/
 - Photos are optional and limited to four JPEG, PNG, WebP, or GIF images of at most 1 MB each. The buyer id keeps the Me Page scoped to bids placed from that browser.
 - The Me Page filters bids by ongoing, suspended, won, and ended state. Marking a listing sold marks the front-runner as won and other active bids as lost; cancelled listings are removed from the active market.
 
-## Next iterations (suggested)
+## Fixes from previous iteration
 
-1. Seller **accept / decline** a bid (the prototype's "accepts or declines in the app" flow), plus "Buy now".
-2. Edit/delete listings.
-3. Rent mode from the prototype (hourly price, deposit, owner rules).
-4. Real accounts and a database.
+1. A user can bid any amount, irrespective of the top bid.
+2. The seller negotiates with the top bidder. If the deal with the top bidder fails, the seller has the option to suspend the bid, which in turn places the next highest bidder as the front runner.
+3. Before choosing the new highest bidder, all bidders are prompted to see if they are still interested. If not, the picking order moves down.
+4. Me Page: Buyers can see all the items they have bid for.
+5. Sellers have the option to add photos.
+6. Added multiple users to improve testing
+7. Added filters for Won, ongoing and Suspended bids.
+8. Added options to cancel listings and bid.
