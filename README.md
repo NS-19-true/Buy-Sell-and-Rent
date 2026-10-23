@@ -80,9 +80,10 @@ campus-trade/
 - If a proxy sits in front of the server, disable response buffering for `/api/events` (the server already sends `X-Accel-Buffering: no` for nginx).
 - Identity is a random per-browser id plus a typed name. There is no login yet.
 
-## Next iterations (suggested)
 
-1. Seller **accept / decline** a bid (the prototype's "accepts or declines in the app" flow), plus "Buy now".
-2. Item photos and edit/delete listings.
-3. Rent mode from the prototype (hourly price, deposit, owner rules).
-4. Real accounts and a database.
+## Apparent Issues Found During Unit Testing
+
+1. A user cannot bid lower then highest bid amount.
+2. User cannot see own biddings.
+3. Seller cannot upload photos.
+
