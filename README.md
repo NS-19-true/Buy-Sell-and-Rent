@@ -8,7 +8,7 @@ One app where every student can browse, bid, list items and manage their own lis
 
 ## Quick start
 
-Requires Node.js 18+ and the [WeChat DevTools](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html).
+Requires Node.js 18+ (Linux/macOS/Windows). WeChat DevTools is **optional** — it has no Linux build, but this repo ships `miniprogram-ci` integration (`npm run ci:preview`, `npm run ci:upload`) so phone testing and uploads work straight from Ubuntu. See [`WECHAT_INTEGRATION.md`](./WECHAT_INTEGRATION.md) step 1 for the one-time CI key setup.
 
 ```bash
 npm install
@@ -16,13 +16,15 @@ npm start                # API on http://localhost:3000   (terminal 1)
 npm run dev:weapp        # compiles the mini program to dist/ and watches   (terminal 2)
 ```
 
-Then in WeChat DevTools choose **Import project → the `dist/` folder**, use the test AppID (`touristappid` is preset), and tick **Details → Local Settings → Do not verify valid domain names** so the simulator may call `http://localhost:3000`.
+To see it running: use WeChat DevTools on a Windows/macOS machine (**Import project → the `dist/` folder**, test AppID `touristappid` is preset, tick **Details → Local Settings → Do not verify valid domain names**), or once you have a real AppID + CI key skip the simulator entirely and scan a device preview from Ubuntu: `npm run ci:preview -- --desc "phone test"`, then open `preview.jpg` in WeChat with debug mode on.
 
 | Command | What it does |
 |---------|--------------|
 | `npm start` | API server (REST + long-poll live updates) |
 | `npm run dev:weapp` | Taro dev build, rebuilds on save, reads `.env.development` |
 | `npm run build:weapp` | Production build into `dist/`, reads `.env.production` |
+| `npm run ci:preview` | Build + generate a scannable phone-preview QR (`preview.jpg`) via miniprogram-ci |
+| `npm run ci:upload` | Build + upload the dev version to mp.weixin.qq.com via miniprogram-ci |
 | `npm run typecheck` | Strict TypeScript check of the mini program |
 | `npm test` | End-to-end API smoke test (port 4100) |
 
@@ -54,8 +56,9 @@ campus-trade/
 │   ├── types.ts                  Item / Bid / events
 │   └── assets/tab/               tab-bar icons
 ├── config/                       Taro build config (px → rpx, env)
+├── scripts/ci.js                 miniprogram-ci upload/preview wrapper (works on Linux)
 ├── .env.development  .env.production    TARO_APP_API_BASE (API origin)
-├── project.config.json           WeChat DevTools project (set your real appid here)
+├── project.config.json           mini program project config (set your real appid here)
 ├── server/
 │   ├── server.js                 REST + long-poll (+ SSE) on one port
 │   ├── store.js                  JSON-file persistence (swap for a DB later)

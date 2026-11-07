@@ -11,7 +11,9 @@
     "test": "node test/smoke.js",
     "typecheck": "tsc --noEmit",
     "dev:weapp": "taro build --type weapp --watch --mode development",
-    "build:weapp": "taro build --type weapp --mode production"
+    "build:weapp": "taro build --type weapp --mode production",
+    "ci:upload": "npm run build:weapp && node scripts/ci.js upload",
+    "ci:preview": "npm run build:weapp && node scripts/ci.js preview"
   },
   "browserslist": [
     "last 3 versions",
@@ -41,6 +43,7 @@
     "@types/node": "^18.15.11",
     "@types/react": "^18.0.0",
     "babel-preset-taro": "4.3.2",
+    "miniprogram-ci": "^2.1.31",
     "postcss": "^8.4.38",
     "react-refresh": "^0.14.0",
     "sass": "^1.75.0",
