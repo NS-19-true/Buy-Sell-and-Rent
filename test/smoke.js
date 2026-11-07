@@ -1,24 +1,15 @@
-// Starts all three processes on test ports and checks the seller -> server -> consumer loop.
+// Starts the single unified server on a test port and checks the full seller -> buyer loop.
 // Run: npm test
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
 const assert = require('assert');
 
-const ports = { SERVER_PORT: 4100, SELLER_PORT: 4101, CONSUMER_PORT: 4102, CONSUMER2_PORT: 4103, CONSUMER3_PORT: 4104 };
-const env = { ...process.env, ...Object.fromEntries(Object.entries(ports).map(([k, v]) => [k, String(v)])),
-  DATA_FILE: path.join(os.tmpdir(), `ct-test-${Date.now()}.json`) };
-const procs = [
-  ['server/server.js', {}],
-  ['seller/server.js', {}],
-  ['consumer/server.js', { CONSUMER_PORT: String(ports.CONSUMER_PORT) }],
-  ['consumer/server.js', { CONSUMER_PORT: String(ports.CONSUMER2_PORT) }],
-  ['consumer/server.js', { CONSUMER_PORT: String(ports.CONSUMER3_PORT) }]
-].map(([f, overrides]) => spawn(process.execPath, [path.join(__dirname, '..', f)], {
-  env: { ...env, ...overrides }, stdio: 'ignore'
-}));
+const PORT = 4100;
+const env = { ...process.env, PORT: String(PORT), DATA_FILE: path.join(os.tmpdir(), `ct-test-${Date.now()}.json`) };
+const procs = [spawn(process.execPath, [path.join(__dirname, '..', 'server', 'server.js')], { env, stdio: 'ignore' })];
 
-const api = (p, opts) => fetch(`http://localhost:${ports.SERVER_PORT}${p}`, opts);
+const api = (p, opts) => fetch(`http://localhost:${PORT}${p}`, opts);
 const post = (p, body) => api(p, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -46,15 +37,15 @@ async function collectEvents(out, signal) {
   try {
     await sleep(800);
     assert.strictEqual((await api('/health')).status, 200, 'server health');
-    for (const [name, port] of [['seller', ports.SELLER_PORT], ['consumer 1', ports.CONSUMER_PORT], ['consumer 2', ports.CONSUMER2_PORT], ['consumer 3', ports.CONSUMER3_PORT]]) {
-      const html = await (await fetch(`http://localhost:${port}/`)).text();
-      assert(html.includes('Campus Trade'), `${name} page served`);
-      if (name === 'seller') assert(html.includes('SELLER'), 'seller listing interface served');
-      if (name.startsWith('consumer')) assert(html.includes('Me Page'), `${name} Me Page navigation served`);
-      assert((await fetch(`http://localhost:${port}/shared/api.js`)).ok, `${name} shared assets`);
-      assert((await fetch(`http://localhost:${port}/shared/static-server.js`)).status === 404, `${name} hides server code`);
-      assert((await fetch(`http://localhost:${port}/..%2f..%2fconfig.js`)).status === 404, `${name} blocks path traversal`);
-    }
+    const base = `http://localhost:${PORT}`;
+    const html = await (await fetch(`${base}/`)).text();
+    assert(html.includes('Campus Trade'), 'unified page served');
+    for (const label of ['Market', 'Sell', 'Listings', 'My bids']) assert(html.includes(label), `${label} navigation served from the one app`);
+    assert((await fetch(`${base}/app.js`)).ok && (await fetch(`${base}/api.js`)).ok && (await fetch(`${base}/styles.css`)).ok, 'client assets served');
+    assert((await fetch(`${base}/server/server.js`)).status === 404, 'server code is not exposed');
+    assert((await fetch(`${base}/config.js`)).status === 404, 'config is not exposed');
+    assert((await fetch(`${base}/..%2fconfig.js`)).status === 404, 'blocks path traversal');
+    assert((await fetch(`${base}/..%2f..%2fetc%2fpasswd`)).status === 404, 'blocks deep path traversal');
 
     const events = []; collectEvents(events, ac.signal); await sleep(200);
 
@@ -65,6 +56,7 @@ async function collectEvents(out, signal) {
     assert.strictEqual((await post('/api/items', { name: 'Bad photo', price: 5, category: 'Books', condition: 'Good', photos: ['data:text/html;base64,PGgxPm5vPC9oMT4='] })).status, 400, 'rejects non-image photos');
     assert.strictEqual((await post('/api/items', { name: '', price: 5, category: 'Books', condition: 'Good' })).status, 400, 'rejects empty name');
 
+    assert.strictEqual((await post(`/api/items/${created.id}/bids`, { bidder: 'Amir', bidderId: 'S1', amount: 500 })).status, 403, 'seller cannot bid on their own listing');
     assert.strictEqual((await post(`/api/items/${created.id}/bids`, { bidder: 'Linh', bidderId: 'B1', amount: 150 })).status, 201, 'first bid');
     assert.strictEqual((await post(`/api/items/${created.id}/bids`, { bidder: 'Kofi', bidderId: 'B2', amount: 165 })).status, 201, 'higher bid');
     assert.strictEqual((await post(`/api/items/${created.id}/bids`, { bidder: 'Mina', bidderId: 'B3', amount: 100 })).status, 201, 'lower bid is accepted');

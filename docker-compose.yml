@@ -1,11 +1,9 @@
-# One image, five containers: the server, seller, and three independent buyer interfaces.
+# One image, one container: UI, API and live events all on port 3000.
 services:
-  server:
+  app:
     build: .
-    command: ["node", "server/server.js"]
     environment:
-      - SERVER_PORT=3000
-      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - PORT=3000
       - DATA_FILE=/app/data/db.json
     ports: ["3000:3000"]
     volumes: ["trade-data:/app/data"]
@@ -14,46 +12,6 @@ services:
       interval: 15s
       timeout: 3s
       retries: 3
-    restart: unless-stopped
-
-  seller:
-    build: .
-    command: ["node", "seller/server.js"]
-    environment:
-      - SELLER_PORT=3001
-      - SERVER_PORT=3000
-    ports: ["3001:3001"]
-    depends_on: [server]
-    restart: unless-stopped
-
-  consumer:
-    build: .
-    command: ["node", "consumer/server.js"]
-    environment:
-      - CONSUMER_PORT=3002
-      - SERVER_PORT=3000
-    ports: ["3002:3002"]
-    depends_on: [server]
-    restart: unless-stopped
-
-  consumer2:
-    build: .
-    command: ["node", "consumer/server.js"]
-    environment:
-      - CONSUMER_PORT=3003
-      - SERVER_PORT=3000
-    ports: ["3003:3003"]
-    depends_on: [server]
-    restart: unless-stopped
-
-  consumer3:
-    build: .
-    command: ["node", "consumer/server.js"]
-    environment:
-      - CONSUMER_PORT=3004
-      - SERVER_PORT=3000
-    ports: ["3004:3004"]
-    depends_on: [server]
     restart: unless-stopped
 
 volumes:

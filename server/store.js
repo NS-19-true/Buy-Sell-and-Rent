@@ -62,6 +62,7 @@ function addBid(id, { bidder, bidderId, amount }) {
   const item = getItem(id);
   if (!item) return { error: 'Item not found', status: 404 };
   if (!isActiveListing(item)) return { error: 'This listing is no longer active', status: 409 };
+  if (item.sellerId && item.sellerId === bidderId) return { error: 'You cannot bid on your own listing', status: 403 };
   const bid = {
     id: `${id}-${item.bids.length + 1}`, bidder, bidderId, amount, at: Date.now(),
     status: 'active', interest: 'unasked'

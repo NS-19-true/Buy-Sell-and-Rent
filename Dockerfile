@@ -7,6 +7,6 @@ COPY package.json ./
 COPY . .
 RUN mkdir -p /app/data && chown -R node:node /app
 USER node
-EXPOSE 3000 3001 3002 3003 3004
-# Default: run all three processes in one container. docker-compose overrides this per service.
-CMD ["node", "start-all.js"]
+EXPOSE 3000
+HEALTHCHECK --interval=15s --timeout=3s --retries=3 CMD wget -qO- http://localhost:3000/health || exit 1
+CMD ["node", "server/server.js"]

@@ -1,33 +1,19 @@
-# HUST Campus Trade – iterative marketplace
+# HUST Campus Trade – unified marketplace
 
-Five processes on separate localhost ports. Seller and buyers never talk to each other directly; everything goes through the common server. Three buyer pages run independently so you can test the full bid-suspension order with multiple consumers.
+One app, one server, one port. Every student can browse, bid, list items and manage their own listings from the same page. The old split into seller (3001), three consumer pages (3002–3004) and a common server (3000) is gone.
 
-| Process  | Port | Role |
-|----------|------|------|
-| `server`   | 3000 | Common channel: REST API + live event stream (SSE), JSON-file storage |
-| `seller`   | 3001 | **User 1** – lists items with description and original price, sees bids live |
-| `consumer` | 3002 | **Buyer 1** – browses listings, places bids, tracks them on the Me Page |
-| `consumer` | 3003 | **Buyer 2** – independent buyer session |
-| `consumer` | 3004 | **Buyer 3** – independent buyer session |
+> **Rental is on standby.** Nothing in this build rents items out. The original design lives in `HUST Campus Trade – Prototype.html` for when we pick it up again.
 
 ## Run
 
 Requires Node.js 18+. No `npm install` needed (zero dependencies).
 
 ```bash
-npm start            # starts all three
-# or individually, in three terminals:
-npm run server
-npm run seller
-npm run consumer
+npm start            # http://localhost:3000
+npm test             # end-to-end smoke test on port 4100
 ```
 
-Open http://localhost:3001 (seller) and http://localhost:3002, http://localhost:3003, and http://localhost:3004 (three independent buyers) side by side. Each port has its own browser storage and buyer identity.
-Publish an item (with optional photos) on the seller side → it appears on the consumer side instantly → place bids at any amount → track and filter bids on the Me Page. Sellers can suspend a top bid, mark a listing sold, or cancel a listing. Buyers can cancel their own bids.
-
-```bash
-npm test             # end-to-end smoke test on ports 4100-4102
-```
+To test with several people at once, open `http://localhost:3000` in different browser profiles or in private windows. Each browser keeps its own identity in `localStorage`, so one browser is one user. A user can bid on other people's listings and sell their own from the same window.
 
 ## Docker
 
@@ -35,65 +21,67 @@ npm test             # end-to-end smoke test on ports 4100-4102
 docker compose up --build
 ```
 
-Ports 3000-3004; listing data is kept in the `trade-data` volume. Or run all five processes in one container:
-`docker build -t campus-trade . && docker run -p 3000-3004:3000-3004 campus-trade`.
+Port 3000; listing data is kept in the `trade-data` volume. Or: `docker build -t campus-trade . && docker run -p 3000:3000 campus-trade`.
+
+## What the user sees
+
+| Tab | What it does |
+|-----|--------------|
+| **Market** | Browse and search active listings, open one to see photos and bids, place a bid. Your own listings are tagged **Yours** and cannot be bid on. |
+| **Sell** | List an item with description, asking price and up to four photos. |
+| **Listings** | Your own listings: live bids, **Suspend & ask next**, **Mark sold**, **Cancel listing**. |
+| **My bids** | Every bid you placed, filterable by Ongoing / Suspended / Won / Ended; answer interest requests; cancel a bid. |
 
 ## Structure
 
 ```
 campus-trade/
-├── config.js                 ports, CORS, categories, data file (env-overridable)
-├── start-all.js              launches the server, seller, and three consumer processes
+├── config.js            PORT, CORS, categories, data file (env-overridable)
 ├── server/
-│   ├── server.js             REST + SSE endpoints, validation, broadcasting
-│   └── store.js              JSON-file persistence (swap for a DB later)
-├── seller/
-│   ├── server.js             serves the seller UI on :3001
-│   └── public/{index.html,app.js}
-├── consumer/
-│   ├── server.js             serves the consumer UI on :3002
-│   └── public/{index.html,app.js}
-├── shared/
-│   ├── static-server.js      tiny static file server used by both UIs
-│   ├── api.js                browser client: fetch helpers + EventSource
-│   └── styles.css            look & feel from the prototype
+│   ├── server.js        static UI + REST + SSE on one port, validation, broadcasting
+│   └── store.js         JSON-file persistence (swap for a DB later)
+├── public/
+│   ├── index.html       the single app shell (4-tab nav)
+│   ├── app.js           unified client: market, sell, listings, my bids
+│   ├── api.js           fetch helpers + EventSource (same origin)
+│   └── styles.css
 ├── test/smoke.js
-├── data/                     db.json is created here at runtime
-├── Dockerfile  docker-compose.yml  .dockerignore  .env.example  .gitignore
-└── package.json
+├── data/                db.json is created here at runtime
+└── Dockerfile  docker-compose.yml  .dockerignore  .env.example  .gitignore  package.json
 ```
 
-## API
+## API (unchanged)
 
 | Method | Path | Purpose |
 |--------|------|---------|
 | GET  | `/api/items` | all listings, newest first (each includes its `bids`) |
 | POST | `/api/items` | `{name, price, category, condition, description, seller, sellerId, photos?}` |
-| POST | `/api/items/:id/sold` | `{sellerId}` – marks the listing sold and records its front-runner as the winner |
+| POST | `/api/items/:id/sold` | `{sellerId}` – marks sold, records the front-runner as winner |
 | POST | `/api/items/:id/cancel` | `{sellerId}` – cancels the listing and ends its active bids |
-| POST | `/api/items/:id/bids` | `{bidder, bidderId, amount}` – any valid positive amount is accepted |
-| POST | `/api/items/:id/bids/:bidId/suspend` | Seller suspends the front-runner bid and asks the next eligible bidder to confirm interest |
-| POST | `/api/items/:id/bids/:bidId/cancel` | `{bidderId}` – buyer cancels their own active or suspended bid |
-| POST | `/api/items/:id/bids/:bidId/interest` | `{bidderId, interested}` – buyer responds to an active request; declining automatically prompts the next bidder |
-| GET  | `/api/events` | SSE stream: `item:created`, `bid:placed`, `item:updated` |
+| POST | `/api/items/:id/bids` | `{bidder, bidderId, amount}` – any positive amount; **403 if `bidderId` is the listing's `sellerId`** |
+| POST | `/api/items/:id/bids/:bidId/suspend` | `{sellerId}` – suspends the front-runner and asks the next bidder |
+| POST | `/api/items/:id/bids/:bidId/cancel` | `{bidderId}` – buyer cancels their own bid |
+| POST | `/api/items/:id/bids/:bidId/interest` | `{bidderId, interested}` – buyer answers an interest request |
+| GET  | `/api/events` | SSE: `item:created`, `bid:placed`, `item:updated` |
 | GET  | `/health` | liveness check |
+
+## What changed in the merge
+
+1. **One process and port** (`PORT`, default 3000) serves the UI and the API, so there is no cross-origin traffic and no `/config.js` hand-off.
+2. **One identity per browser.** `ct.sellerId` and `ct.bidderId` became a single `ct.userId`; `ct.sellerName` and `ct.bidderName` became `ct.userName`. The server still receives `sellerId` and `bidderId` exactly as before, so `store.js` logic is untouched.
+3. **New rule:** you cannot bid on your own listing (server returns 403, the UI hides the bid form). With separate apps this could not happen; with one identity it could.
+4. **New toast:** a buyer is told when a seller's suspension asks them to confirm interest.
+5. **CORS is off by default** because UI and API share an origin. Set `CORS_ORIGIN` only if the UI is hosted elsewhere.
+6. Removed: `seller/`, `consumer/`, `shared/static-server.js`, `start-all.js`, and the `SELLER_PORT`, `CONSUMER*_PORT`, `SERVER_PORT` settings.
+
+Existing `data/db.json` files load unchanged. Old listings carry the old `sellerId` values, so they stay owned by the browsers that created them and will not appear under **Listings** in a new browser.
+
+## Rental, when you pick it back up
+
+The prototype's rental model adds per-hour price, availability hours, rules and a deposit. A clean way to bring it in is a `type: 'sale' | 'rent'` field on items plus a rental request flow in `store.js`, with a Market toggle and a type picker on **Sell**. The unified identity and event stream already support it.
 
 ## Deployment notes
 
-- Set `CORS_ORIGIN` to the real seller/consumer origins (comma-separated) instead of `*`.
-- The UIs reach the server at `<same hostname>:SERVER_PORT`. Behind a reverse proxy, either expose port 3000 or change the `base` line in `shared/api.js` to a path like `/api`.
-- If a proxy sits in front of the server, disable response buffering for `/api/events` (the server already sends `X-Accel-Buffering: no` for nginx).
-- Identity is a random per-browser id plus a typed name. There is no login yet.
-- Photos are optional and limited to four JPEG, PNG, WebP, or GIF images of at most 1 MB each. The buyer id keeps the Me Page scoped to bids placed from that browser.
-- The Me Page filters bids by ongoing, suspended, won, and ended state. Marking a listing sold marks the front-runner as won and other active bids as lost; cancelled listings are removed from the active market.
-
-## Fixes from previous iteration
-
-1. A user can bid any amount, irrespective of the top bid.
-2. The seller negotiates with the top bidder. If the deal with the top bidder fails, the seller has the option to suspend the bid, which in turn places the next highest bidder as the front runner.
-3. Before choosing the new highest bidder, all bidders are prompted to see if they are still interested. If not, the picking order moves down.
-4. Me Page: Buyers can see all the items they have bid for.
-5. Sellers have the option to add photos.
-6. Added multiple users to improve testing
-7. Added filters for Won, ongoing and Suspended bids.
-8. Added options to cancel listings and bid.
+- Behind a reverse proxy, disable response buffering for `/api/events` (the server already sends `X-Accel-Buffering: no` for nginx).
+- Identity is a random per-browser id plus a typed name. There is no login yet, and `sellerId` is not a secret, so this is trust-based until real auth is added.
+- Photos are optional: up to four JPEG, PNG, WebP or GIF images of at most 1 MB each.

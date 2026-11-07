@@ -1,17 +1,26 @@
-// Common channel between seller (user 1) and consumer (user 2).
-//   REST  : GET/POST /api/items, POST /api/items/:id/bids
-//   Live  : GET /api/events  (Server-Sent Events, auto-reconnects in the browser)
+// Unified Campus Trade server: one process, one port.
+//   UI    : GET /                  (static files from ../public)
+//   REST  : GET/POST /api/items, POST /api/items/:id/bids, ...
+//   Live  : GET /api/events        (Server-Sent Events, auto-reconnects in the browser)
+// Every user can both sell and buy; identity is a per-browser userId.
 const http = require('http');
-const { HOST, SERVER_PORT, CORS_ORIGIN, CATEGORIES, CONDITIONS } = require('../config');
+const fs = require('fs');
+const path = require('path');
+const { HOST, PORT, CORS_ORIGIN, CATEGORIES, CONDITIONS } = require('../config');
 const store = require('./store');
 
 const clients = new Set();
+const PUBLIC_DIR = path.join(__dirname, '..', 'public');
+const MIME = {
+  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
+  '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon'
+};
 const MAX_BODY_SIZE = 5_600_000;
 const MAX_PHOTO_SIZE = 1_000_000;
 const MAX_PHOTOS = 4;
 
 function cors(req, res) {
-  const allowed = CORS_ORIGIN.split(',').map((s) => s.trim());
+  const allowed = CORS_ORIGIN.split(',').map((s) => s.trim()).filter(Boolean);
   const origin = req.headers.origin;
   if (allowed.includes('*')) res.setHeader('Access-Control-Allow-Origin', '*');
   else if (origin && allowed.includes(origin)) {
@@ -77,12 +86,28 @@ function validateItem(b) {
   };
 }
 
+function resolveSafe(root, rel) {
+  const full = path.join(root, path.normalize(rel));
+  return full.startsWith(root + path.sep) || full === root ? full : null;
+}
+
+function serveStatic(req, res, pathname) {
+  const file = resolveSafe(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname.slice(1));
+  fs.readFile(file || '', (err, data) => {
+    if (err) return json(res, 404, { error: 'Not found' });
+    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
+    res.end(data);
+  });
+}
+
 const server = http.createServer(async (req, res) => {
   cors(req, res);
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
+  let decoded;
+  try { decoded = decodeURIComponent(p); } catch { return json(res, 400, { error: 'Bad request' }); }
 
   try {
     if (req.method === 'GET' && p === '/health') return json(res, 200, { ok: true });
@@ -154,6 +179,8 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
+    if ((req.method === 'GET' || req.method === 'HEAD') && !p.startsWith('/api/')) return serveStatic(req, res, decoded);
+
     json(res, 404, { error: 'Not found' });
   } catch (e) {
     json(res, e.message === 'Body too large' ? 413 : 400, { error: e.message });
@@ -163,4 +190,6 @@ const server = http.createServer(async (req, res) => {
 // keep idle SSE connections alive through proxies
 setInterval(() => { for (const res of clients) res.write(': ping\n\n'); }, 25_000).unref();
 
-server.listen(SERVER_PORT, HOST, () => console.log(`[server]   API + events on http://localhost:${SERVER_PORT}`));
+server.listen(PORT, HOST, () => console.log(`[campus-trade] app on http://localhost:${PORT}`));
+
+module.exports = server;

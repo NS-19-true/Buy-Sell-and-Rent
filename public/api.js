@@ -1,6 +1,6 @@
-// Browser helper used by both interfaces: REST calls + live updates.
+// Browser helper: REST calls + live updates. The UI and API share one origin.
 (function () {
-  const base = `${location.protocol}//${location.hostname}:${window.APP_CONFIG.apiPort}`;
+  const base = '';
 
   async function request(path, opts) {
     const r = await fetch(base + path, opts);
@@ -23,7 +23,7 @@
     markSold: (id, sellerId) => post(`/api/items/${id}/sold`, { sellerId }),
     cancelListing: (id, sellerId) => post(`/api/items/${id}/cancel`, { sellerId }),
 
-    // handlers: { 'item:created': fn, 'bid:placed': fn, status: fn(bool), open: fn }
+    // handlers: { 'item:created': fn, 'bid:placed': fn, 'item:updated': fn, status: fn(bool), open: fn }
     subscribe(handlers) {
       const es = new EventSource(base + '/api/events');
       es.onopen = () => { handlers.status && handlers.status(true); handlers.open && handlers.open(); };
