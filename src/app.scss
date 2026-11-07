@@ -1,0 +1,138 @@
+/* Visual language taken from the HUST Campus Trade prototype (was public/styles.css).
+   Sizes are written for a 390px-wide phone; Taro converts px -> rpx at build time (config/index.ts). */
+page {
+  --screen: #f6f6f3;
+  --card: #fff;
+  --ink: #1d2421;
+  --mute: #6b746f;
+  --line: #e2e3de;
+  --green: #07a35a;
+  --greenbg: #e3f5eb;
+  --red: #e1251b;
+  --amber: #fff3d6;
+  --amberink: #7a5600;
+  background: var(--screen);
+  color: var(--ink);
+  font-size: 14px;
+  line-height: 1.45;
+  font-family: system-ui, -apple-system, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+view, text, input, textarea, image, scroll-view { box-sizing: border-box; }
+
+.page { padding: 10px 12px 16px; }
+.detail { padding-bottom: env(safe-area-inset-bottom); }
+.detail-end { height: 16px; }
+.grow { flex: 1; min-width: 0; }
+.right { text-align: right; }
+.bold { font-weight: 700; }
+.green { color: var(--green); }
+.dim { color: var(--mute); font-size: 11.5px; }
+.empty { text-align: center; color: var(--mute); padding: 36px 10px; white-space: pre-line; }
+
+/* ---- market header ---- */
+.live-row { display: flex; align-items: center; margin: 0 2px 8px; }
+.live { width: 8px; height: 8px; border-radius: 50%; background: var(--red); margin-right: 5px; }
+.live.on { background: var(--green); }
+.search {
+  width: 100%; height: 38px; padding: 0 14px; margin-bottom: 8px;
+  border: 1px solid var(--line); border-radius: 20px; background: var(--card); color: var(--ink); font-size: 14px;
+}
+
+/* ---- chips ---- */
+.chips { display: flex; flex-wrap: nowrap; white-space: nowrap; padding-bottom: 8px; }
+.chip {
+  display: inline-block; flex: none; margin-right: 6px; padding: 5px 11px;
+  border: 1px solid var(--line); border-radius: 16px; background: var(--card); color: var(--ink); font-size: 12.5px;
+}
+.chip.on { background: var(--ink); color: var(--card); border-color: var(--ink); }
+
+/* ---- market grid ---- */
+.grid { display: flex; flex-wrap: wrap; justify-content: space-between; }
+.item {
+  width: 48.5%; margin-bottom: 10px; overflow: hidden;
+  background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+}
+.item-hover { opacity: 0.7; }
+.pic { display: flex; align-items: center; justify-content: center; width: 100%; }
+.pic-card { height: 96px; font-size: 46px; }
+.pic-thumb { width: 56px; height: 56px; flex: none; border-radius: 10px; font-size: 28px; }
+.pic-hero { height: 170px; font-size: 84px; }
+.meta { padding: 8px 9px 10px; }
+.name {
+  font-weight: 600; font-size: 13px; min-height: 36px; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2;
+  /*! autoprefixer: ignore next */
+  -webkit-box-orient: vertical;
+}
+.name.tight { min-height: 0; }
+.price { color: var(--red); font-weight: 700; font-size: 16px; margin-top: 3px; }
+.tag { display: inline-block; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--greenbg); color: var(--green); margin-right: 4px; }
+
+/* ---- cards / rows ---- */
+.sec { background: var(--card); margin: 8px 12px; padding: 12px; border-radius: 12px; border: 1px solid var(--line); }
+.sec.flush { margin-left: 0; margin-right: 0; }
+.sec.spaced { margin-top: 0; margin-bottom: 10px; }
+.h3 { margin-bottom: 6px; font-size: 13.5px; font-weight: 700; }
+.title { font-weight: 700; font-size: 16px; }
+.desc { margin-top: 6px; }
+.row { display: flex; justify-content: space-between; padding: 3px 0; }
+.top-gap { margin-top: 8px; }
+.listing-head { display: flex; align-items: center; }
+.listing-head .pic-thumb { margin-right: 10px; }
+
+.log { margin-top: 6px; }
+.log-row { display: flex; justify-content: space-between; padding: 5px 0; border-top: 1px solid var(--line); font-size: 12.5px; }
+.log-end { margin-left: 8px; flex: none; }
+
+.note { background: var(--amber); color: var(--amberink); padding: 8px 10px; border-radius: 8px; font-size: 12.5px; margin-top: 8px; }
+.ok { background: var(--greenbg); color: var(--green); padding: 8px 10px; border-radius: 8px; font-size: 12.5px; margin-top: 8px; font-weight: 600; }
+.sheet-margin { margin: 8px 12px; }
+
+/* ---- detail photos ---- */
+.photo-gallery { display: flex; flex-wrap: nowrap; white-space: nowrap; padding: 10px 12px; }
+.gallery-img { display: inline-block; flex: none; width: 220px; height: 170px; margin-right: 8px; border-radius: 12px; background: var(--line); }
+
+/* ---- forms ---- */
+.label { font-size: 12.5px; font-weight: 600; margin: 10px 0 4px; }
+.field {
+  width: 100%; min-height: 38px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px;
+  background: var(--screen); color: var(--ink); font-size: 14px;
+}
+.field.area { height: 80px; padding: 8px 10px; }
+.field.picker { display: flex; align-items: center; justify-content: space-between; height: 38px; }
+.inl { display: flex; align-items: center; margin-top: 8px; }
+.inl .field { margin-right: 8px; }
+.inl-btn { flex: none; width: auto; }
+
+.photo-preview { display: flex; flex-wrap: wrap; }
+.photo-tile { position: relative; width: 64px; height: 64px; margin: 0 8px 8px 0; }
+.photo-img { width: 64px; height: 64px; border-radius: 8px; }
+.photo-x {
+  position: absolute; top: -6px; right: -6px; width: 20px; height: 20px; line-height: 19px; text-align: center;
+  border-radius: 50%; background: var(--ink); color: var(--card); font-size: 14px;
+}
+.photo-add {
+  width: 64px; height: 64px; display: flex; align-items: center; justify-content: center;
+  border: 1px dashed var(--mute); border-radius: 8px; color: var(--mute); font-size: 26px;
+}
+.publish { margin-top: 14px; }
+
+/* ---- buttons ---- */
+.btn {
+  display: flex; align-items: center; justify-content: center; padding: 11px 16px; border-radius: 22px;
+  font-weight: 700; text-align: center; background: var(--green); color: #fff; width: 100%;
+}
+.btn-secondary { background: var(--screen); color: var(--ink); border: 1px solid var(--line); font-weight: 600; }
+.btn-amber { background: var(--amber); color: var(--amberink); border: 1px solid var(--line); font-weight: 400; }
+.btn-small { padding: 8px 10px; font-size: 12px; }
+.btn-amber.btn-small { padding: 4px 8px; border-radius: 14px; font-size: 11px; }
+.btn-hover { opacity: 0.75; }
+.is-disabled { opacity: 0.5; }
+.actions { display: flex; margin-top: 10px; }
+.actions .btn { width: auto; flex: 1; }
+.gap-l { margin-left: 8px; }
+.suspend { display: inline-flex; width: auto; margin-top: 5px; }
+.cancel-bid { width: auto; margin: 8px 0 0 auto; }
+
+.flash { animation: flash 1.2s ease; }
+@keyframes flash { 0% { background: var(--greenbg); } 100% { background: var(--card); } }

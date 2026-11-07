@@ -1,0 +1,30 @@
+export default defineAppConfig({
+  pages: [
+    'pages/market/index',
+    'pages/sell/index',
+    'pages/mine/index',
+    'pages/bids/index',
+    'pages/detail/index'
+  ],
+  window: {
+    backgroundTextStyle: 'dark',
+    navigationBarBackgroundColor: '#ffffff',
+    navigationBarTitleText: 'HUST Campus Trade',
+    navigationBarTextStyle: 'black',
+    backgroundColor: '#f6f6f3'
+  },
+  tabBar: {
+    color: '#6b746f',
+    selectedColor: '#07a35a',
+    backgroundColor: '#ffffff',
+    borderStyle: 'black',
+    list: [
+      { pagePath: 'pages/market/index', text: 'Market', iconPath: 'assets/tab/market.png', selectedIconPath: 'assets/tab/market-on.png' },
+      { pagePath: 'pages/sell/index', text: 'Sell', iconPath: 'assets/tab/sell.png', selectedIconPath: 'assets/tab/sell-on.png' },
+      { pagePath: 'pages/mine/index', text: 'Listings', iconPath: 'assets/tab/mine.png', selectedIconPath: 'assets/tab/mine-on.png' },
+      { pagePath: 'pages/bids/index', text: 'My bids', iconPath: 'assets/tab/bids.png', selectedIconPath: 'assets/tab/bids-on.png' }
+    ]
+  },
+  // A bid or listing request may take a moment on campus Wi-Fi; the long-poll is set per call.
+  networkTimeout: { request: 40000 }
+})

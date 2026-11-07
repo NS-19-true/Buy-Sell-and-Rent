@@ -1,11 +1,50 @@
 {
   "name": "campus-trade",
-  "version": "0.2.0",
-  "description": "Campus marketplace: one app where every student can buy, sell and bid. Rental is on standby.",
+  "version": "0.3.0",
+  "description": "Campus marketplace as a WeChat mini program (Taro + React) with a zero-dependency Node API.",
   "private": true,
-  "engines": { "node": ">=18" },
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
     "start": "node server/server.js",
-    "test": "node test/smoke.js"
+    "test": "node test/smoke.js",
+    "typecheck": "tsc --noEmit",
+    "dev:weapp": "taro build --type weapp --watch --mode development",
+    "build:weapp": "taro build --type weapp --mode production"
+  },
+  "browserslist": [
+    "last 3 versions",
+    "Android >= 4.1",
+    "ios >= 8"
+  ],
+  "dependencies": {
+    "@babel/runtime": "^7.24.4",
+    "@tarojs/components": "4.3.2",
+    "@tarojs/helper": "4.3.2",
+    "@tarojs/plugin-framework-react": "4.3.2",
+    "@tarojs/plugin-platform-weapp": "4.3.2",
+    "@tarojs/react": "4.3.2",
+    "@tarojs/runtime": "4.3.2",
+    "@tarojs/shared": "4.3.2",
+    "@tarojs/taro": "4.3.2",
+    "react": "^18.0.0",
+    "react-dom": "^18.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.4",
+    "@babel/preset-react": "^7.24.1",
+    "@pmmmwh/react-refresh-webpack-plugin": "^0.5.5",
+    "@tarojs/cli": "4.3.2",
+    "@tarojs/taro-loader": "4.3.2",
+    "@tarojs/webpack5-runner": "4.3.2",
+    "@types/node": "^18.15.11",
+    "@types/react": "^18.0.0",
+    "babel-preset-taro": "4.3.2",
+    "postcss": "^8.4.38",
+    "react-refresh": "^0.14.0",
+    "sass": "^1.75.0",
+    "typescript": "^5.4.5",
+    "webpack": "5.91.0"
   }
 }

@@ -1,20 +1,18 @@
-// Unified Campus Trade server: one process, one port.
-//   UI    : GET /                  (static files from ../public)
+// Campus Trade API server: one process, one port. The UI is the Taro mini program in ../src.
 //   REST  : GET/POST /api/items, POST /api/items/:id/bids, ...
-//   Live  : GET /api/events        (Server-Sent Events, auto-reconnects in the browser)
-// Every user can both sell and buy; identity is a per-browser userId.
+//   Live  : GET /api/poll?since=<rev>   long-poll, used by the WeChat mini program
+//           (mini programs have no EventSource, so SSE cannot be used there)
+//           GET /api/events             Server-Sent Events, kept for browser clients
+// Every user can both sell and buy; identity is a per-device userId sent by the client.
 const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const { HOST, PORT, CORS_ORIGIN, CATEGORIES, CONDITIONS } = require('../config');
+const { HOST, PORT, CORS_ORIGIN, CATEGORIES, CONDITIONS, POLL_HOLD_MS } = require('./config');
 const store = require('./store');
 
-const clients = new Set();
-const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-const MIME = {
-  '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
-  '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon'
-};
+const clients = new Set();   // open SSE responses
+const pollers = new Set();   // parked long-poll requests
+const BACKLOG_SIZE = 500;
+const backlog = [];          // [{ rev, event, data }] most recent events, for long-poll replay
+let rev = 0;                 // increments on every broadcast; resets to 0 if the server restarts
 const MAX_BODY_SIZE = 5_600_000;
 const MAX_PHOTO_SIZE = 1_000_000;
 const MAX_PHOTOS = 4;
@@ -51,8 +49,45 @@ function readJson(req) {
 }
 
 function broadcast(event, data) {
+  rev += 1;
+  backlog.push({ rev, event, data });
+  if (backlog.length > BACKLOG_SIZE) backlog.shift();
   const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
   for (const res of clients) res.write(msg);
+  for (const waiter of Array.from(pollers)) {
+    if (backlog.some((e) => e.rev > waiter.since)) finishPoll(waiter);
+  }
+}
+
+// Photos never change after a listing is created, so long-poll updates leave them out
+// instead of re-sending up to 4 MB of base64 to every phone on every bid.
+const slimItem = (item) => ({ ...item, photos: undefined });
+function slimEvent(e) {
+  if (e.event === 'item:created') return e;
+  const data = e.event === 'bid:placed'
+    ? { itemId: e.data.itemId, bid: e.data.bid, item: slimItem(e.data.item) }
+    : slimItem(e.data);
+  return { rev: e.rev, event: e.event, data };
+}
+
+function finishPoll(waiter) {
+  if (!pollers.delete(waiter)) return;
+  clearTimeout(waiter.timer);
+  const events = backlog.filter((e) => e.rev > waiter.since).map(slimEvent);
+  json(waiter.res, 200, { rev, events });
+}
+
+// since === the last rev the client has seen. Replies at once when newer events exist,
+// otherwise parks the request until one arrives or POLL_HOLD_MS passes.
+function handlePoll(req, res, since) {
+  const oldest = backlog.length ? backlog[0].rev : rev + 1;
+  // Client is ahead of us (server restarted) or has fallen out of the backlog: it must resync.
+  if (since > rev || (since < rev && since < oldest - 1)) return json(res, 200, { reset: true, rev, events: [] });
+  const waiter = { since, res, timer: null };
+  pollers.add(waiter);
+  if (backlog.some((e) => e.rev > since)) return finishPoll(waiter);
+  waiter.timer = setTimeout(() => finishPoll(waiter), POLL_HOLD_MS);
+  req.on('close', () => { clearTimeout(waiter.timer); pollers.delete(waiter); });
 }
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -86,31 +121,22 @@ function validateItem(b) {
   };
 }
 
-function resolveSafe(root, rel) {
-  const full = path.join(root, path.normalize(rel));
-  return full.startsWith(root + path.sep) || full === root ? full : null;
-}
-
-function serveStatic(req, res, pathname) {
-  const file = resolveSafe(PUBLIC_DIR, pathname === '/' ? 'index.html' : pathname.slice(1));
-  fs.readFile(file || '', (err, data) => {
-    if (err) return json(res, 404, { error: 'Not found' });
-    res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-cache' });
-    res.end(data);
-  });
-}
-
 const server = http.createServer(async (req, res) => {
   cors(req, res);
   if (req.method === 'OPTIONS') { res.writeHead(204); return res.end(); }
 
   const url = new URL(req.url, 'http://x');
   const p = url.pathname;
-  let decoded;
-  try { decoded = decodeURIComponent(p); } catch { return json(res, 400, { error: 'Bad request' }); }
-
   try {
-    if (req.method === 'GET' && p === '/health') return json(res, 200, { ok: true });
+    if (req.method === 'GET' && (p === '/health' || p === '/')) return json(res, 200, { ok: true });
+
+    if (req.method === 'GET' && p === '/api/rev') return json(res, 200, { rev });
+
+    if (req.method === 'GET' && p === '/api/poll') {
+      const since = Number(url.searchParams.get('since'));
+      if (!Number.isInteger(since) || since < 0) return json(res, 400, { error: 'since must be a non-negative integer' });
+      return handlePoll(req, res, since);
+    }
 
     if (req.method === 'GET' && p === '/api/meta')
       return json(res, 200, { categories: CATEGORIES, conditions: CONDITIONS });
@@ -179,8 +205,6 @@ const server = http.createServer(async (req, res) => {
       return;
     }
 
-    if ((req.method === 'GET' || req.method === 'HEAD') && !p.startsWith('/api/')) return serveStatic(req, res, decoded);
-
     json(res, 404, { error: 'Not found' });
   } catch (e) {
     json(res, e.message === 'Body too large' ? 413 : 400, { error: e.message });
@@ -190,6 +214,6 @@ const server = http.createServer(async (req, res) => {
 // keep idle SSE connections alive through proxies
 setInterval(() => { for (const res of clients) res.write(': ping\n\n'); }, 25_000).unref();
 
-server.listen(PORT, HOST, () => console.log(`[campus-trade] app on http://localhost:${PORT}`));
+server.listen(PORT, HOST, () => console.log(`[campus-trade] API on http://localhost:${PORT}`));
 
 module.exports = server;

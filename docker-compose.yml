@@ -1,4 +1,4 @@
-# One image, one container: UI, API and live events all on port 3000.
+# One container: the REST + long-poll API on port 3000. Put an HTTPS reverse proxy in front for WeChat.
 services:
   app:
     build: .

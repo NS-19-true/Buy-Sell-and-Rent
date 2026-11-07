@@ -1,56 +1,97 @@
-# HUST Campus Trade – unified marketplace
+# HUST Campus Trade – WeChat mini program (Taro)
 
-Feat: One app, one server, one port. Every student can browse, bid, list items and manage their own listings from the same page. The old split into seller (3001), three consumer pages (3002–3004) and a common server (3000) is gone.
+One app where every student can browse, bid, list items and manage their own listings. The client is now a **Taro 4 + React + TypeScript** project that compiles to a **WeChat mini program**; the Node API behind it is unchanged apart from one new endpoint.
 
 > **Rental is on standby.** Nothing in this build rents items out. The original design lives in `HUST Campus Trade – Prototype.html` for when we pick it up again.
 
-## Run
+**Finishing the WeChat side (AppID, HTTPS domain, review, release) is in [`WECHAT_INTEGRATION.md`](./WECHAT_INTEGRATION.md).**
 
-Requires Node.js 18+. No `npm install` needed (zero dependencies).
+## Quick start
 
-```bash
-npm start            # http://localhost:3000
-npm test             # end-to-end smoke test on port 4100
-```
-
-To test with several people at once, open `http://localhost:3000` in different browser profiles or in private windows. Each browser keeps its own identity in `localStorage`, so one browser is one user. A user can bid on other people's listings and sell their own from the same window.
-
-## Docker
+Requires Node.js 18+ and the [WeChat DevTools](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html).
 
 ```bash
-docker compose up --build
+npm install
+npm start                # API on http://localhost:3000   (terminal 1)
+npm run dev:weapp        # compiles the mini program to dist/ and watches   (terminal 2)
 ```
 
-Port 3000; listing data is kept in the `trade-data` volume. Or: `docker build -t campus-trade . && docker run -p 3000:3000 campus-trade`.
+Then in WeChat DevTools choose **Import project → the `dist/` folder**, use the test AppID (`touristappid` is preset), and tick **Details → Local Settings → Do not verify valid domain names** so the simulator may call `http://localhost:3000`.
+
+| Command | What it does |
+|---------|--------------|
+| `npm start` | API server (REST + long-poll live updates) |
+| `npm run dev:weapp` | Taro dev build, rebuilds on save, reads `.env.development` |
+| `npm run build:weapp` | Production build into `dist/`, reads `.env.production` |
+| `npm run typecheck` | Strict TypeScript check of the mini program |
+| `npm test` | End-to-end API smoke test (port 4100) |
 
 ## What the user sees
 
 | Tab | What it does |
 |-----|--------------|
-| **Market** | Browse and search active listings, open one to see photos and bids, place a bid. Your own listings are tagged **Yours** and cannot be bid on. |
-| **Sell** | List an item with description, asking price and up to four photos. |
+| **Market** | Browse and search active listings (pull down to refresh). Tap one to open the **Item** page with photos and bids, and place a bid. Your own listings are tagged **Yours** and cannot be bid on. |
+| **Sell** | List an item with description, asking price and up to four photos from the album or camera. |
 | **Listings** | Your own listings: live bids, **Suspend & ask next**, **Mark sold**, **Cancel listing**. |
 | **My bids** | Every bid you placed, filterable by Ongoing / Suspended / Won / Ended; answer interest requests; cancel a bid. |
+
+Tab-bar badges show how many listings and bids you have.
 
 ## Structure
 
 ```
 campus-trade/
-├── config.js            PORT, CORS, categories, data file (env-overridable)
+├── src/                          ← the mini program (Taro + React + TypeScript)
+│   ├── app.ts  app.config.ts     app lifecycle (live sync on/off), pages + tab bar
+│   ├── app.scss                  all styles (ported from the old styles.css)
+│   ├── pages/
+│   │   ├── market/  sell/  mine/  bids/    the four tabs
+│   │   └── detail/                         item page (was the slide-up sheet)
+│   ├── components/               Btn, Pic, Chips, BidInfo
+│   ├── store/index.ts            app state, identity, live-sync loop, tab badges
+│   ├── services/                 http.ts (Taro.request), api.ts (all endpoints)
+│   ├── utils/                    format.ts, ui.ts (toast/confirm), photos.ts (chooseMedia → data URI)
+│   ├── types.ts                  Item / Bid / events
+│   └── assets/tab/               tab-bar icons
+├── config/                       Taro build config (px → rpx, env)
+├── .env.development  .env.production    TARO_APP_API_BASE (API origin)
+├── project.config.json           WeChat DevTools project (set your real appid here)
 ├── server/
-│   ├── server.js        static UI + REST + SSE on one port, validation, broadcasting
-│   └── store.js         JSON-file persistence (swap for a DB later)
-├── public/
-│   ├── index.html       the single app shell (4-tab nav)
-│   ├── app.js           unified client: market, sell, listings, my bids
-│   ├── api.js           fetch helpers + EventSource (same origin)
-│   └── styles.css
+│   ├── server.js                 REST + long-poll (+ SSE) on one port
+│   ├── store.js                  JSON-file persistence (swap for a DB later)
+│   └── config.js                 PORT, categories, poll hold time (env-overridable)
 ├── test/smoke.js
-├── data/                db.json is created here at runtime
+├── data/                         db.json is created here at runtime
+├── WECHAT_INTEGRATION.md         ← remaining steps to ship on WeChat
 └── Dockerfile  docker-compose.yml  .dockerignore  .env.example  .gitignore  package.json
 ```
 
-## API (unchanged)
+## What changed in the migration
+
+A mini program is not a browser, so each web-only piece was replaced with its mini-program equivalent. Business rules and API payloads did not change.
+
+| Web version | Mini program version |
+|-------------|----------------------|
+| `index.html` + `app.js` string templates + `document.querySelector` | React function components on Taro (`View`, `Text`, `Input`, `Picker`, …) |
+| One page with a 4-button nav | Native **tab bar** with 4 tab pages |
+| Slide-up detail `sheet` | Separate **Item page** (`/pages/detail/index?id=`), native back button |
+| `fetch` | `Taro.request` (`services/http.ts`) |
+| `EventSource` (SSE) | **Long-poll** `GET /api/poll?since=<rev>` driven by `store/index.ts` |
+| `localStorage` | `Taro.getStorageSync` / `setStorageSync` |
+| `<input type=file>` + `FileReader` | `Taro.chooseMedia` + `getFileSystemManager().readFile`, auto-recompressed to fit 1 MB |
+| `window.confirm` / toast `<div>` | `Taro.showModal` / `Taro.showToast` |
+| Nav badge “(3)” | Native tab-bar badge |
+| `styles.css` (px, 390px phone frame) | `app.scss`; Taro converts px → rpx with `designWidth: 390`, so the sizes carry over 1:1 |
+| `<select>` | `Picker` |
+| Time via `toLocaleTimeString` | Hand-rolled `HH:mm` (Intl is not reliable in every mini-program runtime) |
+
+Small additions that suit the platform: pull-to-refresh on Market, removable photo thumbnails on Sell, and live sync that pauses when the mini program is in the background and fully resyncs when it returns.
+
+Dropped: the dark-mode media query and the desktop “phone frame” (the mini program already is a phone). `public/` and the static-file server were removed; **the server no longer serves any UI**.
+
+## API
+
+Unchanged endpoints, plus two for the mini program:
 
 | Method | Path | Purpose |
 |--------|------|---------|
@@ -58,31 +99,27 @@ campus-trade/
 | POST | `/api/items` | `{name, price, category, condition, description, seller, sellerId, photos?}` |
 | POST | `/api/items/:id/sold` | `{sellerId}` – marks sold, records the front-runner as winner |
 | POST | `/api/items/:id/cancel` | `{sellerId}` – cancels the listing and ends its active bids |
-| POST | `/api/items/:id/bids` | `{bidder, bidderId, amount}` – any positive amount; **403 if `bidderId` is the listing's `sellerId`** |
+| POST | `/api/items/:id/bids` | `{bidder, bidderId, amount}` – **403 if `bidderId` is the listing's `sellerId`** |
 | POST | `/api/items/:id/bids/:bidId/suspend` | `{sellerId}` – suspends the front-runner and asks the next bidder |
 | POST | `/api/items/:id/bids/:bidId/cancel` | `{bidderId}` – buyer cancels their own bid |
 | POST | `/api/items/:id/bids/:bidId/interest` | `{bidderId, interested}` – buyer answers an interest request |
-| GET  | `/api/events` | SSE: `item:created`, `bid:placed`, `item:updated` |
+| GET  | `/api/meta` | categories and conditions |
+| GET  | **`/api/rev`** | `{rev}` – current event revision (start of a sync) |
+| GET  | **`/api/poll?since=N`** | long-poll: returns `{rev, events[]}` as soon as events newer than `N` exist, or empty after `POLL_HOLD_MS` (25 s). `{reset: true}` means “you are out of date, reload `/api/items`” (server restarted or backlog overflowed). `bid:placed` / `item:updated` payloads omit `photos`; `item:created` includes them. |
+| GET  | `/api/events` | SSE with the same events (kept for browser clients; the mini program cannot use it) |
 | GET  | `/health` | liveness check |
 
-## What changed in the merge
+## Docker (API only)
 
-1. **One process and port** (`PORT`, default 3000) serves the UI and the API, so there is no cross-origin traffic and no `/config.js` hand-off.
-2. **One identity per browser.** `ct.sellerId` and `ct.bidderId` became a single `ct.userId`; `ct.sellerName` and `ct.bidderName` became `ct.userName`. The server still receives `sellerId` and `bidderId` exactly as before, so `store.js` logic is untouched.
-3. **New rule:** you cannot bid on your own listing (server returns 403, the UI hides the bid form). With separate apps this could not happen; with one identity it could.
-4. **New toast:** a buyer is told when a seller's suspension asks them to confirm interest.
-5. **CORS is off by default** because UI and API share an origin. Set `CORS_ORIGIN` only if the UI is hosted elsewhere.
-6. Removed: `seller/`, `consumer/`, `shared/static-server.js`, `start-all.js`, and the `SELLER_PORT`, `CONSUMER*_PORT`, `SERVER_PORT` settings.
+```bash
+docker compose up --build
+```
 
-Existing `data/db.json` files load unchanged. Old listings carry the old `sellerId` values, so they stay owned by the browsers that created them and will not appear under **Listings** in a new browser.
+Port 3000; listing data is kept in the `trade-data` volume. WeChat requires HTTPS, so put a TLS reverse proxy in front for real use (nginx example in `WECHAT_INTEGRATION.md`).
 
-## Rental, when we pick it back up
+## Notes
 
-The prototype's rental model adds per-hour price, availability hours, rules and a deposit. A clean way to bring it in is a `type: 'sale' | 'rent'` field on items plus a rental request flow in `store.js`, with a Market toggle and a type picker on **Sell**. The unified identity and event stream already support it.
-
-## Deployment notes
-
-- Behind a reverse proxy, disable response buffering for `/api/events` (the server already sends `X-Accel-Buffering: no` for nginx).
-- Identity is a random per-browser id plus a typed name. There is no login yet, and `sellerId` is not a secret, so this is trust-based until real auth is added.
-- Photos are optional: up to four JPEG, PNG, WebP or GIF images of at most 1 MB each.
-
+- Identity is a random per-device id plus a typed name. There is no login yet and `sellerId` is not a secret, so this is trust-based. `WECHAT_INTEGRATION.md` (step 8) shows how to move to `wx.login`.
+- Photos are optional: up to four images of at most 1 MB each. They are still stored as base64 inside `db.json`; fine for a pilot, see the hardening list before a wide release.
+- Existing `data/db.json` files load unchanged. Old listings carry `sellerId` values from web browsers, so no mini-program user owns them.
+- `npm run build:weapp` output is about 0.5 MB, comfortably under WeChat's 2 MB main-package limit.

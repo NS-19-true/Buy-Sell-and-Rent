@@ -2,8 +2,8 @@ FROM node:20-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY package.json ./
-# No third-party dependencies, so nothing to install yet.
-# When you add some, replace this with: COPY package-lock.json ./ && RUN npm ci --omit=dev
+# The API server has no third-party dependencies, so nothing is installed here.
+# (The Taro mini program in src/ is built on your machine, not in this image; see .dockerignore.)
 COPY . .
 RUN mkdir -p /app/data && chown -R node:node /app
 USER node

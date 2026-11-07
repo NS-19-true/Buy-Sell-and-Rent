@@ -2,7 +2,7 @@
 // server.js only depends on the functions exported here.
 const fs = require('fs');
 const path = require('path');
-const { DATA_FILE } = require('../config');
+const { DATA_FILE } = require('./config');
 
 let db = { nextId: 1, items: [] };
 const isActiveListing = (item) => item.status === undefined || item.status === 'active';

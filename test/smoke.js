@@ -1,4 +1,5 @@
-// Starts the single unified server on a test port and checks the full seller -> buyer loop.
+// Starts the API server on a test port and checks the full seller -> buyer loop,
+// over both live-update channels (SSE for browsers, long-poll for the WeChat mini program).
 // Run: npm test
 const { spawn } = require('child_process');
 const path = require('path');
@@ -6,7 +7,7 @@ const os = require('os');
 const assert = require('assert');
 
 const PORT = 4100;
-const env = { ...process.env, PORT: String(PORT), DATA_FILE: path.join(os.tmpdir(), `ct-test-${Date.now()}.json`) };
+const env = { ...process.env, PORT: String(PORT), POLL_HOLD_MS: '1500', DATA_FILE: path.join(os.tmpdir(), `ct-test-${Date.now()}.json`) };
 const procs = [spawn(process.execPath, [path.join(__dirname, '..', 'server', 'server.js')], { env, stdio: 'ignore' })];
 
 const api = (p, opts) => fetch(`http://localhost:${PORT}${p}`, opts);
@@ -38,14 +39,23 @@ async function collectEvents(out, signal) {
     await sleep(800);
     assert.strictEqual((await api('/health')).status, 200, 'server health');
     const base = `http://localhost:${PORT}`;
-    const html = await (await fetch(`${base}/`)).text();
-    assert(html.includes('Campus Trade'), 'unified page served');
-    for (const label of ['Market', 'Sell', 'Listings', 'My bids']) assert(html.includes(label), `${label} navigation served from the one app`);
-    assert((await fetch(`${base}/app.js`)).ok && (await fetch(`${base}/api.js`)).ok && (await fetch(`${base}/styles.css`)).ok, 'client assets served');
-    assert((await fetch(`${base}/server/server.js`)).status === 404, 'server code is not exposed');
-    assert((await fetch(`${base}/config.js`)).status === 404, 'config is not exposed');
-    assert((await fetch(`${base}/..%2fconfig.js`)).status === 404, 'blocks path traversal');
-    assert((await fetch(`${base}/..%2f..%2fetc%2fpasswd`)).status === 404, 'blocks deep path traversal');
+    // The UI now ships as a WeChat mini program, so the server must not serve (or leak) files.
+    assert.strictEqual((await fetch(`${base}/index.html`)).status, 404, 'no static UI served');
+    assert.strictEqual((await fetch(`${base}/server/server.js`)).status, 404, 'server code is not exposed');
+    assert.strictEqual((await fetch(`${base}/server/config.js`)).status, 404, 'config is not exposed');
+    assert.strictEqual((await fetch(`${base}/..%2fconfig.js`)).status, 404, 'blocks path traversal');
+    const meta = await (await api('/api/meta')).json();
+    assert(meta.categories.includes('Books') && meta.conditions.includes('Good'), 'meta served');
+
+    // Long-poll channel (what the mini program uses).
+    const { rev: rev0 } = await (await api('/api/rev')).json();
+    assert.strictEqual(rev0, 0, 'fresh server starts at rev 0');
+    assert.strictEqual((await api('/api/poll?since=abc')).status, 400, 'poll validates since');
+    const idle = Date.now();
+    const empty = await (await api(`/api/poll?since=${rev0}`)).json();
+    assert(Date.now() - idle >= 1000 && empty.events.length === 0 && empty.rev === rev0, 'idle poll waits, then returns no events');
+    assert.strictEqual((await (await api('/api/poll?since=99')).json()).reset, true, 'client ahead of server is told to resync');
+    const parked = api(`/api/poll?since=${rev0}`).then((r) => r.json());   // parked until the next event
 
     const events = []; collectEvents(events, ac.signal); await sleep(200);
 
@@ -53,6 +63,9 @@ async function collectEvents(out, signal) {
     const created = await (await post('/api/items', { name: 'Giant city bike', price: 180, category: 'Transport', condition: 'Like new', description: 'Serviced', seller: 'Amir', sellerId: 'S1', photos: [photo] })).json();
     assert(created.id, 'item created');
     assert.deepStrictEqual(created.photos, [photo], 'listing photos saved');
+    const woke = await parked;
+    assert(woke.events.length === 1 && woke.events[0].event === 'item:created' && woke.rev === 1, 'parked poll wakes on a new event');
+    assert.deepStrictEqual(woke.events[0].data.photos, [photo], 'item:created carries photos over poll');
     assert.strictEqual((await post('/api/items', { name: 'Bad photo', price: 5, category: 'Books', condition: 'Good', photos: ['data:text/html;base64,PGgxPm5vPC9oMT4='] })).status, 400, 'rejects non-image photos');
     assert.strictEqual((await post('/api/items', { name: '', price: 5, category: 'Books', condition: 'Good' })).status, 400, 'rejects empty name');
 
@@ -61,6 +74,11 @@ async function collectEvents(out, signal) {
     assert.strictEqual((await post(`/api/items/${created.id}/bids`, { bidder: 'Kofi', bidderId: 'B2', amount: 165 })).status, 201, 'higher bid');
     assert.strictEqual((await post(`/api/items/${created.id}/bids`, { bidder: 'Mina', bidderId: 'B3', amount: 100 })).status, 201, 'lower bid is accepted');
     assert.strictEqual((await post('/api/items/999/bids', { bidderId: 'B4', amount: 10 })).status, 404, 'unknown item');
+
+    const replay = await (await api(`/api/poll?since=${woke.rev}`)).json();
+    assert.deepStrictEqual(replay.events.map((e) => e.event), ['bid:placed', 'bid:placed', 'bid:placed'], 'poll replays missed events in order');
+    assert(replay.events.every((e) => e.data.item.photos === undefined), 'bid events leave photos out');
+    assert.strictEqual(replay.rev, replay.events[replay.events.length - 1].rev, 'poll returns the newest rev');
 
     const suspended = await post(`/api/items/${created.id}/bids/1-2/suspend`, { sellerId: 'S1' });
     assert.strictEqual(suspended.status, 200, 'seller can suspend the top bid');
