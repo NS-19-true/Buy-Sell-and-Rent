@@ -8,9 +8,9 @@ The code migration is done: `src/` is a Taro 4 + React + TypeScript mini program
 
 | # | Step | Where | Blocks |
 |---|------|-------|--------|
-| 1 | Install tools | your computer | everything |
-| 2 | Run it in WeChat DevTools | your computer | – |
-| 3 | Try it on a real phone | your computer + phone | – |
+| 1 | Install tools | your Ubuntu laptop | everything |
+| 2 | Run it in WeChat DevTools | your Ubuntu laptop + DevTools (VM) | – |
+| 3 | Try it on a real phone | Ubuntu laptop + phone | – |
 | 4 | Register the mini program, get an AppID | mp.weixin.qq.com | 6 |
 | 5 | Deploy the API behind HTTPS on a domain | your server | 6, 7 |
 | 6 | Point the mini program at it | repo + admin console | 7 |
@@ -21,31 +21,50 @@ The code migration is done: `src/` is a Taro 4 + React + TypeScript mini program
 
 Steps 1 to 3 need nothing but a laptop. You can do them today.
 
+> **Heads-up for Linux users:** this guide assumes your dev machine runs **Ubuntu**. The only piece that does not exist for Linux is **WeChat DevTools** itself (Windows/macOS only) — step 1 explains how to work around that with a small Windows VM while everything else stays on Ubuntu.
+
 ---
 
 ## 1. Install the tools
 
-- Node.js 18 or newer
-- [WeChat DevTools](https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html) (stable build)
-- A personal WeChat account that you can scan QR codes with
+Everything below assumes **Ubuntu 22.04 or newer** on your laptop.
+
+- Node.js 18 or newer — Ubuntu's `apt` nodejs is often too old, so use NodeSource:
+  ```bash
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+  sudo apt-get install -y nodejs
+  node --version    # v20.x
+  ```
+- Git and build essentials (used by npm packages that compile native code, e.g. some sass versions):
+  ```bash
+  sudo apt-get install -y git curl build-essential
+  ```
+- A personal WeChat account that you can scan QR codes with.
+- **WeChat DevTools.** There is **no official Linux build** — only Windows and macOS. On Ubuntu you have three options, pick one:
+  1. **Windows VM (recommended).** Install GNOME Boxes (`sudo apt-get install gnome-boxes`) or VirtualBox, run Windows in it, and install the stable DevTools build from <https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html>. Share the repo folder so the VM sees `/home/<you>/campus-trade`, or simply clone the repo inside the VM. The API and `npm run dev:weapp` keep running on Ubuntu; DevTools in the VM watches `dist/` through the shared folder and reloads when it changes (enable auto-refresh under **Settings → Project Settings** if it does not).
+  2. **Wine.** Some community guides get DevTools running under Wine, but it is unsupported and flaky — use it only if the VM route is impossible for you.
+  3. **A Windows/macOS machine borrowed for the few DevTools steps** (import, preview, upload). Everything else in this guide is done on Ubuntu.
 
 ```bash
-npm install
+npm install   # run in /home/<you>/campus-trade on Ubuntu
 ```
 
 ## 2. Run it in WeChat DevTools
 
-Two terminals:
+Two terminals on Ubuntu:
 
 ```bash
 npm start              # API on http://localhost:3000
 npm run dev:weapp      # builds to dist/ and rebuilds on every save
 ```
 
+Then, in DevTools (inside the Windows VM or on the other machine — see step 1):
+
 1. Open WeChat DevTools, scan the login QR code.
-2. **Import project** and pick the **`dist/`** folder (not the repo root).
+2. **Import project** and pick the **`dist/`** folder (not the repo root). With a shared folder, that is the `campus-trade/dist` path as seen from the VM; with a cloned repo inside the VM, run `npm install && npm run dev:weapp` there instead of on Ubuntu.
 3. AppID: choose **Test account** (or keep `touristappid`).
 4. Open **Details (详情) → Local Settings (本地设置)** and tick **Do not verify valid domain names, web-view (business domains), TLS versions and HTTPS certificates (不校验合法域名…)**. Without this the simulator refuses to call `http://localhost:3000`.
+5. If DevTools runs in a VM and the API runs on Ubuntu, use the Ubuntu host's address instead of `localhost`: put `TARO_APP_API_BASE=http://<ubuntu-ip>:3000` in `.env.development` (find the IP with `hostname -I`, first value). For VirtualBox NAT networking, `10.0.2.2` reaches the host; for bridged or Boxes networking use the LAN IP.
 
 You should see the Market tab with a green “Live · connected to server” dot. Create a listing on the Sell tab, then open a second simulator window or the phone (step 3) to bid on it.
 
@@ -55,12 +74,19 @@ The API origin comes from `.env.development` (`TARO_APP_API_BASE`). Edit `src/` 
 
 `localhost` on a phone means the phone itself, so:
 
-1. Put the phone and computer on the same Wi-Fi.
-2. Find your computer's LAN IP (for example `192.168.1.20`) and set it in `.env.development`:
+1. Put the phone and the laptop on the same Wi-Fi.
+2. Find your laptop's LAN IP and set it in `.env.development`:
+   ```bash
+   hostname -I          # e.g. "192.168.1.20 172.17.0.1" — take the first address
+   ```
    ```
    TARO_APP_API_BASE=http://192.168.1.20:3000
    ```
-3. Allow port 3000 through the computer's firewall. The API already listens on `0.0.0.0`.
+3. Allow port 3000 through Ubuntu's firewall if `ufw` is enabled. The API already listens on `0.0.0.0`, so nothing else is needed when `ufw` is inactive (check with `sudo ufw status`):
+   ```bash
+   sudo ufw allow from 192.168.1.0/24 to any port 3000 proto tcp
+   ```
+   Remove the rule later with `sudo ufw delete allow from 192.168.1.0/24 to any port 3000 proto tcp`.
 4. Restart `npm run dev:weapp` (env values are read at build time).
 5. In DevTools click **Preview (预览)** and scan the QR code with WeChat.
 6. On the phone, open the `···` menu in the mini program and switch on **Enable debugging (打开调试)**. Plain-HTTP and unlisted domains work **only** in debug mode; a trial or released version will not allow them.
@@ -82,20 +108,31 @@ The API origin comes from `.env.development` (`TARO_APP_API_BASE`). Edit `src/` 
 
 Released mini programs can call **only HTTPS domains** that you have registered, with a certificate from a trusted CA and TLS 1.2 or newer. No raw IP addresses, no `localhost`, and use the standard port 443.
 
-1. Rent a server (or use a PaaS) and point a domain at it, for example `api.your-domain.example`. If the server is in mainland China, the domain needs ICP filing first.
-2. Run the API. The repo already has a Dockerfile:
+1. Rent a Linux server (Ubuntu LTS is fine, or use a PaaS) and point a domain at it, for example `api.your-domain.example`. If the server is in mainland China, the domain needs ICP filing first.
+2. Run the API. The repo already has a Dockerfile — on an Ubuntu server install Docker with:
    ```bash
-   docker compose up -d --build        # API on port 3000, data in the trade-data volume
+   sudo apt-get update && sudo apt-get install -y docker.io docker-compose-v2
    ```
-   or `npm start` under a process manager.
-3. Put a TLS reverse proxy in front. nginx example:
+   then:
+   ```bash
+   git clone <your-repo> && cd campus-trade
+   sudo docker compose up -d --build        # API on port 3000, data in the trade-data volume
+   ```
+   Or run it without Docker (`npm start`) under a process manager such as systemd or pm2 (`sudo npm i -g pm2 && pm2 start server/server.js`).
+3. Put a TLS reverse proxy in front. On Ubuntu, nginx comes from `apt` and Let's Encrypt certificates from `certbot`:
+   ```bash
+   sudo apt-get install -y nginx certbot python3-certbot-nginx
+   sudo certbot --nginx -d api.your-domain.example   # issues the cert and edits the nginx site
+   ```
+   Then make sure the nginx site (e.g. `/etc/nginx/sites-available/api`) contains at least:
    ```nginx
    server {
      listen 443 ssl http2;
      server_name api.your-domain.example;
 
-     ssl_certificate     /etc/ssl/your-domain/fullchain.pem;
-     ssl_certificate_key /etc/ssl/your-domain/privkey.pem;
+     # certbot fills these paths in for you:
+     ssl_certificate     /etc/letsencrypt/live/api.your-domain.example/fullchain.pem;
+     ssl_certificate_key /etc/letsencrypt/live/api.your-domain.example/privkey.pem;
      ssl_protocols       TLSv1.2 TLSv1.3;
 
      # Listing photos travel as base64 inside the JSON body (up to ~5.4 MB for 4 photos).
@@ -111,6 +148,7 @@ Released mini programs can call **only HTTPS domains** that you have registered,
      }
    }
    ```
+   Apply with `sudo nginx -t && sudo systemctl reload nginx`. Open the firewall: `sudo ufw allow 'Nginx Full'` (and close 3000 to the outside if it was opened: `sudo ufw deny 3000`).
 4. Check it from outside:
    ```bash
    curl https://api.your-domain.example/health        # {"ok":true}
@@ -131,9 +169,13 @@ Released mini programs can call **only HTTPS domains** that you have registered,
 
 ## 7. Build, upload and test as a trial version
 
+Build on Ubuntu:
+
 ```bash
 npm run build:weapp         # production build to dist/ (uses .env.production)
 ```
+
+Then in DevTools (the Windows VM or the other machine — it needs access to the freshly built `dist/`; if you built on Ubuntu with a shared folder, use that path; if you cloned the repo inside the VM, run the build there instead):
 
 1. In DevTools open `dist/` (importing it again is fine after changing the AppID).
 2. Untick **Do not verify valid domain names** to see what a real user will see. Every request must still work.
@@ -237,7 +279,7 @@ None of these block a campus pilot, but each is worth scheduling.
 | Symptom | Likely cause and fix |
 |---------|----------------------|
 | `request:fail url not in domain list` | The domain is not in **request legal domain** (step 6). In DevTools only, tick “Do not verify valid domain names”. |
-| Works in the simulator, “Connecting…” forever on the phone | The phone cannot reach the API: it is using `localhost` (step 3), a firewall blocks port 3000, or debugging is off in a preview build. |
+| Works in the simulator, “Connecting…” forever on the phone | The phone cannot reach the API: it is using `localhost` (step 3), Ubuntu's `ufw` blocks port 3000 (`sudo ufw status`, then allow it as in step 3), or debugging is off in a preview build. |
 | Publishing a listing with photos fails with 413 | The reverse proxy body limit. Set nginx `client_max_body_size 6m;`. |
 | Live dot flickers between “Live” and “Connecting…” | A proxy or CDN is cutting the idle long-poll. Raise its read timeout above 40 s, or lower `POLL_HOLD_MS` (default 25000 ms, must stay below the client timeout of 40 s). |
 | Everything works on Wi-Fi but not on mobile data | HTTPS certificate chain incomplete. Serve `fullchain.pem`, not just the leaf certificate. Verify with an SSL checker. |
