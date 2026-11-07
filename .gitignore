@@ -1,4 +1,10 @@
 node_modules/
+dist/
 data/db.json
 data/*.tmp
 .env
+# WeChat miniprogram-ci credentials & artifacts (never commit)
+private.key
+*.key
+preview.jpg
+.swc/

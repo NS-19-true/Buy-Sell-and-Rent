@@ -9,19 +9,17 @@ The code migration is done: `src/` is a Taro 4 + React + TypeScript mini program
 | # | Step | Where | Blocks |
 |---|------|-------|--------|
 | 1 | Install tools | your Ubuntu laptop | everything |
-| 2 | Run it in WeChat DevTools | your Ubuntu laptop + DevTools (VM) | – |
-| 3 | Try it on a real phone | Ubuntu laptop + phone | – |
-| 4 | Register the mini program, get an AppID | mp.weixin.qq.com | 6 |
+| 2 | Run it in WeChat DevTools | optional: Windows/macOS machine with DevTools | – |
+| 3 | Try it on a real phone | Ubuntu laptop (`npm run ci:preview`) + phone | – |
+| 4 | Register the mini program, get an AppID | mp.weixin.qq.com | 6, 7 |
 | 5 | Deploy the API behind HTTPS on a domain | your server | 6, 7 |
 | 6 | Point the mini program at it | repo + admin console | 7 |
-| 7 | Build, upload, test as a trial version | DevTools + admin console | 9 |
+| 7 | Build, upload, test as a trial version | Ubuntu laptop (`npm run ci:upload`) + admin console | 9 |
 | 8 | Replace the trust-based identity with `wx.login` | repo + server | 9 (strongly advised) |
 | 9 | Complete compliance items and submit for review | admin console | 10 |
 | 10 | Release | admin console | – |
 
-Steps 1 to 3 need nothing but a laptop. You can do them today.
-
-> **Heads-up for Linux users:** this guide assumes your dev machine runs **Ubuntu**. The only piece that does not exist for Linux is **WeChat DevTools** itself (Windows/macOS only) — step 1 explains how to work around that with a small Windows VM while everything else stays on Ubuntu.
+> **Linux note — no VM needed.** WeChat DevTools has no official Linux build, but you do **not** need a Windows VM for this project. WeChat's official [`miniprogram-ci`](https://www.npmjs.com/package/miniprogram-ci) package is pure Node.js and runs on Linux; it is already wired into this repo as `npm run ci:preview` and `npm run ci:upload` (see steps 3 and 7). Those two commands cover the only things DevTools was needed for on this workflow — running on a real phone, uploading, and generating trial QR codes. The DevTools simulator itself remains a Windows/macOS-only nicety: use it only if you want an in-emulator UI preview or its debugger/lighthouse panels; otherwise everything in this guide happens on Ubuntu plus the web admin console.
 
 ---
 
@@ -40,35 +38,36 @@ Everything below assumes **Ubuntu 22.04 or newer** on your laptop.
   sudo apt-get install -y git curl build-essential
   ```
 - A personal WeChat account that you can scan QR codes with.
-- **WeChat DevTools.** There is **no official Linux build** — only Windows and macOS. On Ubuntu you have three options, pick one:
-  1. **Windows VM (recommended).** Install GNOME Boxes (`sudo apt-get install gnome-boxes`) or VirtualBox, run Windows in it, and install the stable DevTools build from <https://developers.weixin.qq.com/miniprogram/dev/devtools/download.html>. Share the repo folder so the VM sees `/home/<you>/campus-trade`, or simply clone the repo inside the VM. The API and `npm run dev:weapp` keep running on Ubuntu; DevTools in the VM watches `dist/` through the shared folder and reloads when it changes (enable auto-refresh under **Settings → Project Settings** if it does not).
-  2. **Wine.** Some community guides get DevTools running under Wine, but it is unsupported and flaky — use it only if the VM route is impossible for you.
-  3. **A Windows/macOS machine borrowed for the few DevTools steps** (import, preview, upload). Everything else in this guide is done on Ubuntu.
+- **No WeChat DevTools installation is required.** The official Linux build does not exist, but this repo uses WeChat's [`miniprogram-ci`](https://www.npmjs.com/package/miniprogram-ci) npm package instead — it runs on Linux (Node ≥ 16, x64/arm64), compiles and packs the bundle exactly like DevTools' Upload button, uploads to WeChat's servers, and generates real-device preview QR codes. It is already installed here as a devDependency; `scripts/ci.js` wraps it with the project's settings. To use it you need two things from the admin console once you have your AppID (step 4):
+  1. **CI private key** — mp.weixin.qq.com → **Management → Development Settings (管理 → 开发设置) → Code Upload area (小程序代码上传)**: enable code upload, download `private.<appid>.key`, and save it in the repo root as `private.key` (git-ignored; never commit it).
+  2. **IP whitelist** — on the same page, add the public IP of the machine that runs `npm run ci:upload` (find yours with `curl -4 ifconfig.me`). Preview/upload requests from non-whitelisted IPs are rejected.
+
+  If you *want* the DevTools simulator anyway (in-emulator UI preview, debugger, experience-score audits), it only runs on Windows/macOS — use a spare machine or a VM for that alone; nothing else in this guide depends on it.
 
 ```bash
 npm install   # run in /home/<you>/campus-trade on Ubuntu
 ```
 
-## 2. Run it in WeChat DevTools
+## 2. Simulator preview (optional)
 
-Two terminals on Ubuntu:
+Without DevTools you can still see the whole app working on Ubuntu: `npm start` + `npm run dev:weapp`, then test through the web-era flows or go straight to a real phone (step 3 — `npm run ci:preview` gives you an on-device build with vConsole debugging).
+
+If you do have access to DevTools on a Windows/macOS machine, the classic route works too:
 
 ```bash
 npm start              # API on http://localhost:3000
 npm run dev:weapp      # builds to dist/ and rebuilds on every save
 ```
 
-Then, in DevTools (inside the Windows VM or on the other machine — see step 1):
-
 1. Open WeChat DevTools, scan the login QR code.
-2. **Import project** and pick the **`dist/`** folder (not the repo root). With a shared folder, that is the `campus-trade/dist` path as seen from the VM; with a cloned repo inside the VM, run `npm install && npm run dev:weapp` there instead of on Ubuntu.
+2. **Import project** and pick the **`dist/`** folder (not the repo root). Either share/clone the repo so the machine sees the live `dist/`, or run `npm install && npm run dev:weapp` on that machine.
 3. AppID: choose **Test account** (or keep `touristappid`).
 4. Open **Details (详情) → Local Settings (本地设置)** and tick **Do not verify valid domain names, web-view (business domains), TLS versions and HTTPS certificates (不校验合法域名…)**. Without this the simulator refuses to call `http://localhost:3000`.
-5. If DevTools runs in a VM and the API runs on Ubuntu, use the Ubuntu host's address instead of `localhost`: put `TARO_APP_API_BASE=http://<ubuntu-ip>:3000` in `.env.development` (find the IP with `hostname -I`, first value). For VirtualBox NAT networking, `10.0.2.2` reaches the host; for bridged or Boxes networking use the LAN IP.
+5. If DevTools runs on another machine and the API runs on Ubuntu, use the Ubuntu host's LAN address instead of `localhost`: put `TARO_APP_API_BASE=http://<ubuntu-ip>:3000` in `.env.development` (find the IP with `hostname -I`, first value) and rebuild.
 
 You should see the Market tab with a green “Live · connected to server” dot. Create a listing on the Sell tab, then open a second simulator window or the phone (step 3) to bid on it.
 
-The API origin comes from `.env.development` (`TARO_APP_API_BASE`). Edit `src/` and DevTools reloads.
+The API origin comes from `.env.development` (`TARO_APP_API_BASE`). Edit `src/` and the watcher reloads.
 
 ## 3. Try it on a real phone
 
@@ -87,9 +86,13 @@ The API origin comes from `.env.development` (`TARO_APP_API_BASE`). Edit `src/` 
    sudo ufw allow from 192.168.1.0/24 to any port 3000 proto tcp
    ```
    Remove the rule later with `sudo ufw delete allow from 192.168.1.0/24 to any port 3000 proto tcp`.
-4. Restart `npm run dev:weapp` (env values are read at build time).
-5. In DevTools click **Preview (预览)** and scan the QR code with WeChat.
-6. On the phone, open the `···` menu in the mini program and switch on **Enable debugging (打开调试)**. Plain-HTTP and unlisted domains work **only** in debug mode; a trial or released version will not allow them.
+4. Generate a preview QR code from Ubuntu with miniprogram-ci (it rebuilds first). This needs the real AppID and the CI key from steps 1 and 4; before you have them, use a deployed HTTPS API and skip to step 7:
+   ```bash
+   npm run ci:preview -- --desc "phone test"   # writes preview.jpg in the repo root
+   xdg-open preview.jpg                          # or just open the file
+   ```
+   Scan it with WeChat — the mini program opens on your phone.
+5. On the phone, open the `···` menu in the mini program and switch on **Enable debugging (打开调试)**, then restart the mini program. Debug mode turns on **vConsole** (a green corner button): tap it to read `console.log` output and network errors right on the phone — this replaces most of what you would otherwise need the DevTools console for. Plain-HTTP and unlisted domains work **only** in debug mode; a trial or released version will not allow them.
 
 ## 4. Register the mini program and get an AppID
 
@@ -102,7 +105,8 @@ The API origin comes from `.env.development` (`TARO_APP_API_BASE`). Edit `src/` 
    "appid": "wx0123456789abcdef"
    ```
    Do not edit `dist/project.config.json`; Taro regenerates it on every build.
-6. **Filing (备案).** WeChat currently requires mini programs operated from mainland China to complete a mini-program filing before release, and a domain served from a mainland-China server needs ICP filing. Start this early; it can take days to weeks. The admin console has a filing entry that shows the current requirements.
+6. **Enable CI uploads** so you can push code from Ubuntu without DevTools. In the admin console go to **Management → Development Settings (管理 → 开发设置)**, scroll to **小程序代码上传 (Code Upload)**: set the app-secret-based auth, download the **CI private key** (`private.<appid>.key`), save it as `private.key` in the repo root (`chmod 600 private.key`), and add your laptop's public IP (`curl -4 ifconfig.me`) to the **IP whitelist**. Re-download the key and re-check the whitelist whenever uploads start failing with an auth error.
+7. **Filing (备案).** WeChat currently requires mini programs operated from mainland China to complete a mini-program filing before release, and a domain served from a mainland-China server needs ICP filing. Start this early; it can take days to weeks. The admin console has a filing entry that shows the current requirements.
 
 ## 5. Deploy the API behind HTTPS
 
@@ -169,19 +173,35 @@ Released mini programs can call **only HTTPS domains** that you have registered,
 
 ## 7. Build, upload and test as a trial version
 
-Build on Ubuntu:
+All of this happens on Ubuntu — no DevTools needed. `npm run ci:upload` builds for production and pushes the bundle to WeChat with `miniprogram-ci`:
 
 ```bash
-npm run build:weapp         # production build to dist/ (uses .env.production)
+npm run ci:upload -- --version 0.3.0 --desc "campus pilot build"
 ```
 
-Then in DevTools (the Windows VM or the other machine — it needs access to the freshly built `dist/`; if you built on Ubuntu with a shared folder, use that path; if you cloned the repo inside the VM, run the build there instead):
+What it does (see `scripts/ci.js` if you want to tweak it):
 
-1. In DevTools open `dist/` (importing it again is fine after changing the AppID).
-2. Untick **Do not verify valid domain names** to see what a real user will see. Every request must still work.
-3. Click **Upload (上传)**, give it a version number (`0.3.0`) and a note.
-4. In the admin console open **Management → Version Management (管理 → 版本管理)**. Your upload appears under *Development version*. Set it as the **trial version (体验版)**.
-5. Add testers under **Management → Member Management (管理 → 成员管理)** and send them the trial QR code.
+1. Runs `npm run build:weapp` (production build to `dist/`, using `.env.production`).
+2. Reads the AppID from `dist/project.config.json` (override with `WEAPP_APPID=...`).
+3. Signs the request with `./private.key` (override path with `WEAPP_PRIVATE_KEY=...`) and uploads.
+
+Then in the **admin console** only:
+
+1. Open **Management → Version Management (管理 → 版本管理)**. Your upload appears under *Development version (开发版本)*. Set it as the **trial version (体验版)** and scan its QR code.
+2. Add testers under **Management → Member Management (管理 → 成员管理)** and send them the trial QR code.
+3. Sanity-check before setting the trial: temporarily rename `private.key` and rerun the command — it should fail with a clear message rather than uploading garbage. And to see what a real user will get, tick nothing in DevTools; instead just open the trial build **without** debug mode on your phone: every request must go to the allow-listed HTTPS domain or it fails exactly as it would after release.
+
+Useful flags / env overrides for `scripts/ci.js`:
+
+| Name | Meaning |
+|------|---------|
+| `--version X.Y.Z` | version string shown in Version Management (defaults to package.json's version) |
+| `--desc "..."` | note attached to the upload |
+| `WEAPP_APPID` | override the appid without editing project.config.json |
+| `WEAPP_PRIVATE_KEY` | path to the CI key (default `./private.key`) |
+| `WEAPP_DIST` | build output dir (default `./dist`) |
+
+`npm run ci:preview` works the same way but produces `preview.jpg` (a scannable QR valid ~25 minutes) instead of an upload — handy for step 3 and for testers who should not touch the trial version.
 
 Test list for the trial build, on at least one iPhone and one Android phone:
 
@@ -278,8 +298,10 @@ None of these block a campus pilot, but each is worth scheduling.
 
 | Symptom | Likely cause and fix |
 |---------|----------------------|
-| `request:fail url not in domain list` | The domain is not in **request legal domain** (step 6). In DevTools only, tick “Do not verify valid domain names”. |
-| Works in the simulator, “Connecting…” forever on the phone | The phone cannot reach the API: it is using `localhost` (step 3), Ubuntu's `ufw` blocks port 3000 (`sudo ufw status`, then allow it as in step 3), or debugging is off in a preview build. |
+| `request:fail url not in domain list` | The domain is not in **request legal domain** (step 6). Only affects trial/released builds; in a debug-mode preview build it should not appear. In the optional DevTools simulator, tick “Do not verify valid domain names”. |
+| Works on the laptop, “Connecting…” forever on the phone | The phone cannot reach the API: it is using `localhost` (step 3), Ubuntu's `ufw` blocks port 3000 (`sudo ufw status`, then allow it as in step 3), or debugging is off in a preview build. Tap vConsole → Log/Network to see the failing request. |
+| `npm run ci:upload` fails with an auth/IP error (e.g. `invalid ip`, `errCode: -1`) | The CI key is missing/wrong, or this machine's public IP is not in the whitelist (step 4.6). Check `curl -4 ifconfig.me` matches the console entry; re-download `private.key` if you reset it. |
+| `ci:preview`/`ci:upload` says AppID is still `touristappid` | Put your real AppID in the root `project.config.json` and rebuild (or pass `WEAPP_APPID`). Tourist appids cannot be uploaded. |
 | Publishing a listing with photos fails with 413 | The reverse proxy body limit. Set nginx `client_max_body_size 6m;`. |
 | Live dot flickers between “Live” and “Connecting…” | A proxy or CDN is cutting the idle long-poll. Raise its read timeout above 40 s, or lower `POLL_HOLD_MS` (default 25000 ms, must stay below the client timeout of 40 s). |
 | Everything works on Wi-Fi but not on mobile data | HTTPS certificate chain incomplete. Serve `fullchain.pem`, not just the leaf certificate. Verify with an SSL checker. |
