@@ -1,6 +1,6 @@
 # HUST Campus Trade – unified marketplace
 
-One app, one server, one port. Every student can browse, bid, list items and manage their own listings from the same page. The old split into seller (3001), three consumer pages (3002–3004) and a common server (3000) is gone.
+Feat: One app, one server, one port. Every student can browse, bid, list items and manage their own listings from the same page. The old split into seller (3001), three consumer pages (3002–3004) and a common server (3000) is gone.
 
 > **Rental is on standby.** Nothing in this build rents items out. The original design lives in `HUST Campus Trade – Prototype.html` for when we pick it up again.
 
@@ -76,7 +76,7 @@ campus-trade/
 
 Existing `data/db.json` files load unchanged. Old listings carry the old `sellerId` values, so they stay owned by the browsers that created them and will not appear under **Listings** in a new browser.
 
-## Rental, when you pick it back up
+## Rental, when we pick it back up
 
 The prototype's rental model adds per-hour price, availability hours, rules and a deposit. A clean way to bring it in is a `type: 'sale' | 'rent'` field on items plus a rental request flow in `store.js`, with a Market toggle and a type picker on **Sell**. The unified identity and event stream already support it.
 
@@ -85,3 +85,4 @@ The prototype's rental model adds per-hour price, availability hours, rules and 
 - Behind a reverse proxy, disable response buffering for `/api/events` (the server already sends `X-Accel-Buffering: no` for nginx).
 - Identity is a random per-browser id plus a typed name. There is no login yet, and `sellerId` is not a secret, so this is trust-based until real auth is added.
 - Photos are optional: up to four JPEG, PNG, WebP or GIF images of at most 1 MB each.
+
