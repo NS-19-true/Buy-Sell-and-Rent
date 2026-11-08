@@ -3,6 +3,7 @@ import Taro, { useDidShow, usePullDownRefresh } from '@tarojs/taro'
 import { Input, Text, View } from '@tarojs/components'
 import Chips from '../../components/Chips'
 import Pic from '../../components/Pic'
+import { API_BASE, IS_PROD } from '../../config'
 import { isMine, refresh, updateTabBadges, useStore } from '../../store'
 import { listingStatus, topBid } from '../../utils/format'
 import { toast } from '../../utils/ui'
@@ -28,7 +29,9 @@ export default function Market() {
     <View className='page'>
       <View className='live-row'>
         <View className={`live ${s.live ? 'on' : ''}`} />
-        <Text className='dim'>{s.live ? 'Live · connected to server' : 'Connecting…'}</Text>
+        <Text className='dim'>
+          {s.live ? 'Live · connected to server' : IS_PROD ? 'Connecting…' : `Connecting to ${API_BASE} …`}
+        </Text>
       </View>
       <Input
         className='search'

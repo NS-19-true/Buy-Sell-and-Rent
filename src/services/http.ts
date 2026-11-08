@@ -1,11 +1,7 @@
 import Taro from '@tarojs/taro'
+import { API_BASE, IS_PROD } from '../config'
 
-/**
- * API origin, injected at build time from .env.development / .env.production.
- * In a released mini program this MUST be an https:// domain listed under
- * "request legal domain" in the WeChat admin console.
- */
-export const API_BASE = (process.env.TARO_APP_API_BASE || '').replace(/\/+$/, '')
+export { API_BASE }
 
 export async function request<T>(
   path: string,
@@ -21,7 +17,9 @@ export async function request<T>(
       timeout: options.timeout ?? 15000
     })
   } catch (e) {
-    throw new Error('Network problem. Check your connection and try again.')
+    console.warn('[request failed]', API_BASE + path, e)
+    // While developing, say exactly which address failed: it is almost always the address in src/config.ts.
+    throw new Error(IS_PROD ? 'Network problem. Check your connection and try again.' : `Cannot reach ${API_BASE}. Is the server running, and is this address right?`)
   }
   if (res.statusCode < 200 || res.statusCode >= 300) {
     const message = res.data && (res.data as { error?: string }).error

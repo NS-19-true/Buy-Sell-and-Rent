@@ -1,7 +1,6 @@
 # HUST Campus Trade – WeChat mini program (Taro)
 
 One app where every student can browse, bid, list items and manage their own listings. The client is now a **Taro 4 + React + TypeScript** project that compiles to a **WeChat mini program**; the Node API behind it is unchanged apart from one new endpoint.
-
 > **Rental is on standby.** Nothing in this build rents items out. The original design lives in `HUST Campus Trade – Prototype.html` for when we pick it up again.
 
 **Finishing the WeChat side (AppID, HTTPS domain, review, release) is in [`WECHAT_INTEGRATION.md`](./WECHAT_INTEGRATION.md).**

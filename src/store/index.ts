@@ -213,8 +213,9 @@ export function startSync() {
         let needsResync = false
         for (const e of result.events) if (!handleEvent(e)) needsResync = true
         since = needsResync ? null : result.rev
-      } catch {
+      } catch (e) {
         if (!active()) return
+        console.warn('[sync] connection problem, will retry:', e)
         setState({ live: false })
         since = null                     // like the web app: full re-sync after every reconnect
         failures += 1
